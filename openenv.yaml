@@ -1,0 +1,51 @@
+name: medi-triage-env
+version: 1.0.0
+description: >
+  A real-world medical triage RL environment where an AI agent learns
+  to classify patient urgency (Self-care/Non-urgent/Urgent/Emergency)
+  based on symptoms, age, duration, and chronic conditions.
+
+observation_space:
+  type: object
+  fields:
+    patient_id: string
+    age: integer
+    symptoms: list[string]
+    duration_hours: integer
+    has_chronic_condition: boolean
+    past_visits: integer
+    language: string
+
+action_space:
+  type: object
+  fields:
+    urgency_level: integer (0-3)
+    predicted_disease: string
+    first_aid_suggestion: string
+    alert_doctor: boolean
+
+tasks:
+  - name: easy
+    description: Single symptom triage, healthy patients
+    difficulty: easy
+  - name: medium
+    description: Multi-symptom with chronic conditions
+    difficulty: medium
+  - name: hard
+    description: Critical/ambiguous emergency scenarios
+    difficulty: hard
+
+reward:
+  correct_triage: 1.0
+  off_by_one: 0.5
+  over_triaged: -0.3
+  under_triaged: -1.0
+
+endpoints:
+  reset: POST /reset/{task_level}
+  step: POST /step/{task_level}
+  state: GET /state/{task_level}
+
+docker:
+  port: 7860
+  base_image: python:3.12-slim
