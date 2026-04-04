@@ -1,7 +1,7 @@
-fastapi==0.135.3
-uvicorn==0.34.0
-pydantic==2.12.0
-openai==2.30.0
-pyyaml==6.0.2
-requests==2.32.3
-huggingface_hub==1.9.0
+fastapi==0.110.0
+uvicorn==0.27.1
+pydantic==2.6.4
+openai==1.14.3
+pyyaml==6.0.1
+requests==2.31.0
+huggingface_hub==0.21.4

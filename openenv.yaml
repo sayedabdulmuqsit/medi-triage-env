@@ -1,51 +1,223 @@
-name: medi-triage-env
-version: 1.0.0
+name: MediGuide RL
+version: "2.0.0"
 description: >
-  A real-world medical triage RL environment where an AI agent learns
-  to classify patient urgency (Self-care/Non-urgent/Urgent/Emergency)
-  based on symptoms, age, duration, and chronic conditions.
+  Healthcare triage RL environment where an AI agent learns to classify patient
+  urgency (0=Self-Care to 3=Emergency) using symptoms, vital signs, chronic
+  conditions, and visit history. Addresses India's healthcare crisis of
+  misallocated resources. Features shaped rewards, stochastic patient generation
+  influenced by season and time-of-day, Hindi language support, and SQLite
+  session memory.
+
+author: sayedabdulmuqsit11
+space_url: https://huggingface.co/spaces/sayedabdulmuqsit11/medi-triage-env
+
+api:
+  base_url: https://sayedabdulmuqsit11-medi-triage-env.hf.space
+  endpoints:
+    reset:
+      method: POST
+      path: /reset
+      description: Start a new episode and receive a patient observation
+      request_body:
+        task:
+          type: string
+          enum: [easy, medium, hard, expert, adversarial]
+          default: easy
+      response: PatientObservation
+
+    step:
+      method: POST
+      path: /step
+      description: Submit a triage action and receive reward + next state
+      request_body:
+        urgency_level:
+          type: integer
+          enum: [0, 1, 2, 3]
+          description: "0=Self-Care, 1=Non-Urgent, 2=Urgent, 3=Emergency"
+        reasoning:
+          type: string
+        recommended_action:
+          type: string
+        estimated_wait_minutes:
+          type: integer
+        predicted_diagnosis:
+          type: string
+          optional: true
+        hindi_input:
+          type: string
+          optional: true
+          description: Hindi symptom description to translate before processing
+      response: StepResult
+
+    state:
+      method: GET
+      path: /state
+      description: Current environment state and training statistics
+
+    analytics:
+      method: GET
+      path: /analytics
+      description: >
+        Training analytics: total episodes, avg reward, missed emergencies rate,
+        overtriage rate, disease distribution, avg decision time
+
+    translate:
+      method: GET
+      path: /translate
+      description: Translate Hindi symptom text to English
+      query_params:
+        text:
+          type: string
+
+    tasks:
+      method: GET
+      path: /tasks
+      description: List all available task levels with descriptions
 
 observation_space:
   type: object
   fields:
     patient_id: string
-    age: integer
-    symptoms: list[string]
-    duration_hours: integer
-    has_chronic_condition: boolean
-    past_visits: integer
-    language: string
+    age:
+      type: integer
+      range: [1, 100]
+    symptoms:
+      type: list[string]
+      description: Clinical symptom list; may include Hindi-translated entries
+    symptom_duration_hours:
+      type: integer
+    chronic_conditions:
+      type: list[string]
+    past_visits_30_days:
+      type: integer
+    pain_scale:
+      type: integer
+      range: [0, 10]
+    vitals:
+      type: object
+      fields:
+        heart_rate:
+          type: integer
+          unit: BPM
+          normal_range: [60, 100]
+        systolic_bp:
+          type: integer
+          unit: mmHg
+          normal_range: [90, 120]
+        diastolic_bp:
+          type: integer
+          unit: mmHg
+          normal_range: [60, 80]
+        oxygen_saturation:
+          type: float
+          unit: percent
+          normal_range: [95.0, 100.0]
+        temperature:
+          type: float
+          unit: Celsius
+          normal_range: [36.1, 37.2]
+        respiratory_rate:
+          type: integer
+          unit: breaths_per_minute
+          normal_range: [12, 20]
+    visit_history:
+      type: list[object]
+      description: Up to 3 past visits from this session (SQLite-backed memory)
+    time_of_day:
+      type: string
+      enum: [morning, afternoon, evening, night]
+    season:
+      type: string
+      enum: [summer, winter, monsoon, spring]
 
 action_space:
   type: object
   fields:
-    urgency_level: integer (0-3)
-    predicted_disease: string
-    first_aid_suggestion: string
-    alert_doctor: boolean
+    urgency_level:
+      type: integer
+      enum: [0, 1, 2, 3]
+      labels:
+        0: Self-Care
+        1: Non-Urgent
+        2: Urgent
+        3: Emergency
+    reasoning:
+      type: string
+    recommended_action:
+      type: string
+    estimated_wait_minutes:
+      type: integer
+    predicted_diagnosis:
+      type: string
+      optional: true
+
+reward_signals:
+  - name: accuracy
+    description: Correct triage classification (+1.0 exact, +0.4 one-off, -0.3×diff otherwise)
+  - name: speed_bonus
+    description: +0.2 for Emergency decisions made in under 30 seconds
+  - name: diagnosis_bonus
+    description: +0.3 for providing a correct predicted diagnosis
+  - name: chronic_awareness_bonus
+    description: +0.1 for mentioning chronic conditions in reasoning when present
+  - name: resource_efficiency_penalty
+    description: -0.2 for over-triaging by 2+ levels (wasteful resource use)
+  - name: missed_emergency_penalty
+    description: -0.5 for failing to escalate an Emergency to Urgent or above
+
+reward_range: [-1.0, 1.6]
 
 tasks:
-  - name: easy
-    description: Single symptom triage, healthy patients
-    difficulty: easy
-  - name: medium
-    description: Multi-symptom with chronic conditions
-    difficulty: medium
-  - name: hard
-    description: Critical/ambiguous emergency scenarios
-    difficulty: hard
+  easy:
+    description: Clear-cut cases (obvious self-care or obvious emergency)
+    grader_target: 0.90
+    stochastic: true
 
-reward:
-  correct_triage: 1.0
-  off_by_one: 0.5
-  over_triaged: -0.3
-  under_triaged: -1.0
+  medium:
+    description: Ambiguous cases with chronic conditions and mixed signals
+    grader_target: 0.70
+    stochastic: true
+    grader_bonuses:
+      - reasoning keyword match (+0.05 per matched symptom keyword, max +0.15)
+      - vital signs alignment (+0.10)
+      - chronic condition awareness (+0.10)
 
-endpoints:
-  reset: POST /reset/{task_level}
-  step: POST /step/{task_level}
-  state: GET /state/{task_level}
+  hard:
+    description: Multi-comorbidity complex presentations
+    grader_target: 0.95
+    stochastic: true
 
-docker:
-  port: 7860
-  base_image: python:3.12-slim
+  expert:
+    description: Mass casualty event — 5 simultaneous patients
+    grader_target: 0.85
+    stochastic: true
+
+  adversarial:
+    description: Contradicting vitals vs reported symptoms — agent must trust objective data
+    grader_target: 0.80
+    stochastic: false
+
+stochasticity:
+  time_of_day:
+    effect: night increases cardiac/respiratory emergencies
+  season:
+    monsoon: higher dengue/malaria/cholera symptom prevalence
+    summer: higher heat-stroke risk
+    winter: higher respiratory illness prevalence
+
+memory:
+  type: sqlite
+  scope: session
+  stores: past patient visits with symptoms, urgency assigned, reward
+  max_history_per_patient: 3
+
+language_support:
+  - English
+  - Hindi (keyword-mapping translation, no heavy ML model)
+
+infrastructure:
+  runtime_limit_minutes: 20
+  max_cpu: 2
+  max_ram_gb: 8
+  requires_gpu: false
+  database: SQLite (in-memory path /tmp)
