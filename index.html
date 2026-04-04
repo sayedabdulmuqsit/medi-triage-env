@@ -4,595 +4,719 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MediGuide RL</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root {
-  --bg:      #0d1117;
-  --surface: #161b22;
-  --surface2:#1c2230;
-  --border:  #21262d;
-  --border2: #30363d;
-  --text:    #e6edf3;
-  --text2:   #8b949e;
-  --text3:   #484f58;
-  --green:   #3fb950;
-  --green2:  #238636;
-  --blue:    #58a6ff;
-  --red:     #f85149;
-  --amber:   #e3b341;
-  --purple:  #bc8cff;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#0d9488;--teal-d:#0f766e;--teal-xl:#f0fdfa;--teal-l:#ccfbf1;
+  --white:#ffffff;--bg:#f1f5f4;
+  --text:#111827;--text2:#6b7280;--text3:#9ca3af;
+  --border:#e5e7eb;--border2:#d1d5db;
+  --green:#10b981;--red:#ef4444;--amber:#f59e0b;--purple:#8b5cf6;--orange:#f97316;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.08);
+  --r:10px;--sw:230px;
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 14px; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Inter', sans-serif;
-  font-weight: 400;
-  line-height: 1.6;
-  min-height: 100vh;
+html{font-size:14px}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+
+/* ─── SIDEBAR ─────────────────────────────────────── */
+.sidebar{
+  width:var(--sw);background:var(--white);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:fixed;inset:0 auto 0 0;z-index:100;
+}
+.sb-logo{
+  display:flex;align-items:center;gap:10px;
+  padding:18px 20px;border-bottom:1px solid var(--border);
+}
+.sb-logo-icon{
+  width:34px;height:34px;border-radius:9px;
+  background:var(--teal);display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:17px;flex-shrink:0;
+}
+.sb-logo-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.3px}
+
+.sb-group-label{
+  font-size:10px;font-weight:600;color:var(--text3);
+  letter-spacing:1.2px;text-transform:uppercase;
+  padding:18px 20px 6px;
+}
+.sb-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;margin:1px 8px;border-radius:8px;
+  font-size:13.5px;font-weight:500;color:var(--text2);
+  cursor:pointer;text-decoration:none;transition:all .15s;
+}
+.sb-item:hover{background:var(--teal-xl);color:var(--teal)}
+.sb-item.active{background:var(--teal);color:#fff}
+.sb-item svg{width:16px;height:16px;flex-shrink:0;stroke-width:2}
+
+.sb-footer{
+  margin-top:auto;padding:14px;
+  border-top:1px solid var(--border);
+}
+.sb-status{
+  display:flex;align-items:center;gap:10px;
+  background:var(--teal-xl);border-radius:9px;padding:12px 14px;
+}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;transition:background .3s}
+.status-dot.off{background:var(--red)}
+.sb-status-info{}
+.sb-status-title{font-size:12px;font-weight:600;color:var(--teal-d)}
+.sb-status-sub{font-size:11px;color:var(--text3);margin-top:1px}
+
+/* ─── MAIN ────────────────────────────────────────── */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ─── TOPBAR ──────────────────────────────────────── */
+.topbar{
+  background:var(--white);border-bottom:1px solid var(--border);
+  height:62px;display:flex;align-items:center;
+  padding:0 28px;gap:16px;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-title{font-size:19px;font-weight:700;color:var(--text);letter-spacing:-.4px}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+/* Task pills */
+.task-pills{display:flex;gap:6px}
+.tp{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:12px;font-weight:600;
+  padding:6px 15px;border-radius:20px;
+  border:1.5px solid var(--border2);background:var(--white);
+  color:var(--text2);cursor:pointer;transition:all .15s;
+}
+.tp:hover{border-color:var(--teal);color:var(--teal)}
+.tp.active{background:var(--teal);border-color:var(--teal);color:#fff}
+.tp.te.active{background:var(--amber);border-color:var(--amber);color:#fff}
+.tp.ta.active{background:var(--purple);border-color:var(--purple);color:#fff}
+
+/* Buttons */
+.btn{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  font-size:13px;font-weight:600;
+  padding:9px 20px;border-radius:9px;border:none;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;transition:all .15s;
+}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-d)}
+.btn-secondary{background:var(--white);color:var(--text2);border:1.5px solid var(--border2)}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-xl)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ─── CONTENT ─────────────────────────────────────── */
+.content{padding:26px 28px;flex:1}
+
+/* ─── STAT CARDS ──────────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--r);padding:18px 20px;
+  box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:14px;
+}
+.stat-ico{
+  width:44px;height:44px;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;
+}
+.ico-teal{background:var(--teal-l)} .ico-green{background:#d1fae5}
+.ico-red{background:#fee2e2}         .ico-amber{background:#fef3c7}
+.stat-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+.stat-value{font-size:24px;font-weight:700;color:var(--text);line-height:1.1;margin-top:3px}
+.sv-green{color:var(--green)} .sv-red{color:var(--red)} .sv-amber{color:var(--amber)}
+
+/* ─── CHARTS ──────────────────────────────────────── */
+.charts-row{display:grid;grid-template-columns:1fr 340px;gap:14px;margin-bottom:22px}
+.card{
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;
+}
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+}
+.card-title{font-size:14px;font-weight:700;color:var(--text)}
+.card-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.card-body{padding:18px 20px}
+
+/* ─── MAIN GRID ───────────────────────────────────── */
+.main-grid{display:grid;grid-template-columns:1fr 340px;gap:14px;margin-bottom:22px}
+
+/* ─── PATIENT CARD ────────────────────────────────── */
+.patient-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+.patient-id{font-size:17px;font-weight:700;color:var(--text)}
+.patient-sub{font-size:12px;color:var(--text3);margin-top:3px}
+.task-badge{
+  font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;
+  background:var(--teal-l);color:var(--teal-d);text-transform:capitalize;
 }
 
-nav {
-  height: 56px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  gap: 12px;
-  position: sticky;
-  top: 0;
-  background: var(--bg);
-  z-index: 100;
-}
-.nav-logo {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-}
-.nav-logo span { color: var(--green); }
-.nav-sep { width: 1px; height: 16px; background: var(--border2); }
-.nav-tag { font-size: 12px; color: var(--text3); }
-.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  transition: background .3s;
-}
-.status-dot.offline { background: var(--red); }
-.status-txt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); }
-
-.container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
-.layout { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
-
-.section { margin-bottom: 24px; }
-.sec-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text3);
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  margin-bottom: 10px;
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.block-label{
+  font-size:10.5px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px;
 }
 
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 20px;
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  font-size:12px;padding:4px 10px;border-radius:6px;
+  background:var(--bg);border:1px solid var(--border);color:var(--text2);
+}
+.chip.danger{background:#fef2f2;border-color:#fecaca;color:var(--red)}
+
+/* Vitals */
+.vitals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vit{
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:12px;
+}
+.vit.warn{border-color:#fcd34d;background:#fffbeb}
+.vit.crit{border-color:#fca5a5;background:#fef2f2}
+.vit-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.vit-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500;color:var(--text)}
+.vit-val.warn{color:var(--amber)}
+.vit-val.crit{color:var(--red)}
+.vit-unit{font-size:10px;color:var(--text3);margin-top:2px}
+
+.ctx-row{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.ctx-pill{
+  font-size:11px;padding:3px 10px;border-radius:20px;
+  background:var(--teal-xl);border:1px solid var(--teal-l);color:var(--teal-d);
 }
 
-.analytics-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
-.stat {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
+.visit-row{
+  display:flex;gap:8px;align-items:center;
+  padding:6px 0;border-bottom:1px solid var(--border);
+  font-size:12px;color:var(--text2);
 }
-.stat-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
-.stat-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 20px;
-  font-weight: 500;
-}
-.c-green { color: var(--green); }
-.c-red   { color: var(--red); }
-.c-amber { color: var(--amber); }
-.c-text  { color: var(--text); }
+.visit-row:last-child{border-bottom:none}
 
-.task-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.task-btn {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border2);
-  background: transparent;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all .15s;
+/* ─── URGENCY SELECTOR ────────────────────────────── */
+.urgency-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.u-btn{
+  padding:12px 4px;border-radius:9px;
+  border:1.5px solid var(--border);background:var(--bg);
+  cursor:pointer;text-align:center;transition:all .15s;
 }
-.task-btn:hover { background: var(--surface2); color: var(--text); }
-.task-btn.active         { border-color: var(--green);  color: var(--green);  background: rgba(63,185,80,.08); }
-.task-btn.t-expert.active  { border-color: var(--amber);  color: var(--amber);  background: rgba(227,179,65,.08); }
-.task-btn.t-adv.active   { border-color: var(--purple); color: var(--purple); background: rgba(188,140,255,.08); }
+.u-btn:hover{border-color:var(--teal);background:var(--teal-xl)}
+.u-num{font-size:20px;font-weight:700;margin-bottom:3px}
+.u-text{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.u-btn.s0{border-color:var(--green);background:#f0fdf4} .u-btn.s0 .u-text{color:var(--green)}
+.u-btn.s1{border-color:var(--amber);background:#fffbeb} .u-btn.s1 .u-text{color:var(--amber)}
+.u-btn.s2{border-color:var(--orange);background:#fff7ed} .u-btn.s2 .u-text{color:var(--orange)}
+.u-btn.s3{border-color:var(--red);background:#fef2f2}   .u-btn.s3 .u-text{color:var(--red)}
 
-.patient-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 20px;
+/* Form */
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px}
+.opt{font-size:10px;font-weight:400;color:var(--text3);margin-left:6px}
+.field input,.field textarea{
+  width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;
+  padding:9px 12px;outline:none;transition:border-color .15s;resize:vertical;
 }
-.p-id { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
-.p-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text2);
-  margin-top: 4px;
-}
-.task-pill {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  border: 1px solid var(--border2);
-  color: var(--text2);
-  text-transform: capitalize;
-}
+.field input:focus,.field textarea:focus{border-color:var(--teal);background:var(--white)}
+.field textarea{min-height:72px;line-height:1.5}
+.btn-row{display:flex;gap:8px}
 
-.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.field-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text3);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+/* ─── REWARD ──────────────────────────────────────── */
+.rw-total{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.rw-num{font-size:30px;font-weight:700}
+.rw-labels{font-size:12px;color:var(--text3);margin-top:4px}
+.rw-dt{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-align:right}
+.sig-row{display:flex;align-items:center;gap:10px;padding:5px 0}
+.sig-name{font-size:12px;color:var(--text2);flex:1}
+.sig-bar{width:72px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;flex-shrink:0}
+.sig-fill{height:100%;border-radius:2px;transition:width .5s ease}
+.sig-fill.pos{background:var(--green)} .sig-fill.neg{background:var(--red)}
+.sig-val{font-family:'JetBrains Mono',monospace;font-size:11px;width:40px;text-align:right;flex-shrink:0}
+.sig-val.pos{color:var(--green)} .sig-val.neg{color:var(--red)}
+
+/* ─── HISTORY TABLE ───────────────────────────────── */
+.hist-table{width:100%;border-collapse:collapse}
+.hist-table th{
+  font-size:11px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.5px;
+  padding:0 14px 11px;text-align:left;
+  border-bottom:1px solid var(--border);
+}
+.hist-table td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-table tbody tr:hover td{background:var(--teal-xl)}
+.u-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:6px;
+  font-size:12px;font-weight:700;
 }
 
-.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 3px 9px;
-  border-radius: 4px;
-  border: 1px solid var(--border2);
-  color: var(--text2);
-  background: var(--surface2);
-}
-.chip.alert { border-color: rgba(248,81,73,.3); color: var(--red); background: rgba(248,81,73,.06); }
+/* ─── LOG ─────────────────────────────────────────── */
+.log-wrap{background:#0f1c19;border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.8;max-height:160px;overflow-y:auto;color:#7fb99a}
+.le{display:flex;gap:10px}
+.lt{color:#3d6b56;flex-shrink:0}
+.lg{color:#34d399}.lr{color:#f87171}.lb{color:#60a5fa}.la{color:#fbbf24}
 
-.vitals-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-.vit {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 11px;
-}
-.vit.warn { border-color: rgba(227,179,65,.4); }
-.vit.crit { border-color: rgba(248,81,73,.4); }
-.vit-name { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
-.vit-val  { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 500; }
-.vit-val.warn { color: var(--amber); }
-.vit-val.crit { color: var(--red); }
-.vit-unit { font-size: 10px; color: var(--text3); margin-top: 2px; }
+/* ─── EMPTY ───────────────────────────────────────── */
+.empty{padding:32px;text-align:center;color:var(--text3);font-size:13px}
+.empty b{color:var(--teal)}
 
-.ctx-row { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
-.ctx-pill {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  color: var(--text3);
-}
-
-.visit-row {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text2);
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-}
-.visit-row:last-child { border-bottom: none; }
-
-.urgency-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 16px; }
-.u-btn {
-  padding: 10px 4px;
-  border-radius: 6px;
-  border: 1px solid var(--border2);
-  background: var(--surface2);
-  cursor: pointer;
-  text-align: center;
-  transition: all .15s;
-}
-.u-btn:hover { background: var(--surface); }
-.u-num { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 500; margin-bottom: 2px; }
-.u-lbl { font-size: 10px; color: var(--text3); }
-.u-btn.sel-0 { border-color: var(--green);  background: rgba(63,185,80,.08); }
-.u-btn.sel-1 { border-color: var(--amber);  background: rgba(227,179,65,.08); }
-.u-btn.sel-2 { border-color: #e09550;       background: rgba(224,149,80,.08); }
-.u-btn.sel-3 { border-color: var(--red);    background: rgba(248,81,73,.08); }
-
-.field { margin-bottom: 13px; }
-.field label {
-  display: block;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text3);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  margin-bottom: 5px;
-}
-.field input, .field textarea {
-  width: 100%;
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  padding: 8px 11px;
-  outline: none;
-  transition: border-color .15s;
-  resize: vertical;
-}
-.field input:focus, .field textarea:focus { border-color: var(--blue); }
-.field textarea { min-height: 68px; line-height: 1.5; }
-
-.opt-label { font-size: 10px; color: var(--text3); font-weight: 400; text-transform: none; letter-spacing: 0; }
-
-.btn-row { display: flex; gap: 8px; }
-.btn {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 8px 18px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  transition: all .15s;
-}
-.btn-primary   { background: var(--green2); color: #fff; }
-.btn-primary:hover { background: #2ea043; }
-.btn-secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
-.btn-secondary:hover { color: var(--text); }
-.btn:disabled  { opacity: .4; cursor: not-allowed; }
-
-.rw-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.rw-total  { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500; }
-.rw-meta   { font-size: 11px; color: var(--text2); margin-top: 2px; }
-.rw-dt     { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); text-align: right; }
-
-.sig-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-.sig-name { font-size: 11px; color: var(--text2); flex: 1; }
-.sig-bar  { width: 72px; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
-.sig-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
-.sig-fill.pos { background: var(--green); }
-.sig-fill.neg { background: var(--red); }
-.sig-val  { font-family: 'JetBrains Mono', monospace; font-size: 11px; width: 38px; text-align: right; flex-shrink: 0; }
-.sig-val.pos { color: var(--green); }
-.sig-val.neg { color: var(--red); }
-
-.hist-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 6px;
-  background: var(--surface2);
-  margin-bottom: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-}
-.h-badge {
-  width: 22px; height: 22px;
-  border-radius: 4px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 500; flex-shrink: 0;
-}
-.h-info { flex: 1; color: var(--text2); }
-.h-rw   { font-weight: 500; }
-
-.log-panel {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  line-height: 1.7;
-  max-height: 150px;
-  overflow-y: auto;
-  color: var(--text2);
-}
-.le { display: flex; gap: 10px; }
-.lt { color: var(--text3); flex-shrink: 0; }
-.lg { color: var(--green); }
-.lr { color: var(--red); }
-.lb { color: var(--blue); }
-.la { color: var(--amber); }
-
-.empty { padding: 28px; text-align: center; color: var(--text3); font-size: 13px; }
-
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
-
-@media (max-width: 860px) {
-  .layout         { grid-template-columns: 1fr; }
-  .analytics-row  { grid-template-columns: 1fr 1fr; }
-  .vitals-grid    { grid-template-columns: 1fr 1fr; }
-  .two-col        { grid-template-columns: 1fr; }
-}
+/* scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
 </style>
 </head>
 <body>
 
-<nav>
-  <div class="nav-logo">Medi<span>Guide</span> RL</div>
-  <div class="nav-sep"></div>
-  <div class="nav-tag">Healthcare Triage Environment</div>
-  <div class="nav-right">
-    <div class="status-dot" id="statusDot"></div>
-    <span class="status-txt" id="statusTxt">Connecting</span>
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">⚕</div>
+    <div class="sb-logo-name">MediGuide RL</div>
   </div>
-</nav>
 
-<div class="container">
+  <div class="sb-group-label">Main Menu</div>
+  <a class="sb-item active" href="#" onclick="return false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </a>
+  <a class="sb-item" href="#triage-section" onclick="scrollTo('triage-section')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Triage
+  </a>
+  <a class="sb-item" href="#history-section" onclick="scrollTo('history-section')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    History
+  </a>
 
-  <div class="section">
-    <div class="analytics-row">
-      <div class="stat">
-        <div class="stat-label">Episodes</div>
-        <div class="stat-val c-green" id="aEp">—</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Avg Reward</div>
-        <div class="stat-val c-text" id="aAvg">—</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Missed Emergencies</div>
-        <div class="stat-val c-red" id="aMiss">—</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Overtriage Rate</div>
-        <div class="stat-val c-amber" id="aOver">—</div>
+  <div class="sb-group-label">System</div>
+  <a class="sb-item" href="./docs" target="_blank">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    API Docs
+  </a>
+  <a class="sb-item" href="./analytics" target="_blank">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analytics
+  </a>
+
+  <div class="sb-footer">
+    <div class="sb-status">
+      <div class="status-dot" id="statusDot"></div>
+      <div class="sb-status-info">
+        <div class="sb-status-title" id="statusTitle">Connecting…</div>
+        <div class="sb-status-sub">Healthcare Triage API</div>
       </div>
     </div>
   </div>
+</aside>
 
-  <div class="section">
-    <div class="sec-label">Task Level</div>
-    <div class="task-row">
-      <button class="task-btn active" onclick="selTask('easy',this)">Easy</button>
-      <button class="task-btn" onclick="selTask('medium',this)">Medium</button>
-      <button class="task-btn" onclick="selTask('hard',this)">Hard</button>
-      <button class="task-btn t-expert" onclick="selTask('expert',this)">Expert</button>
-      <button class="task-btn t-adv" onclick="selTask('adversarial',this)">Adversarial</button>
+<!-- ══ MAIN ══════════════════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-title">Patient Triage Dashboard</div>
+    <div class="topbar-right">
+      <div class="task-pills">
+        <button class="tp active" onclick="selTask('easy',this)">Easy</button>
+        <button class="tp" onclick="selTask('medium',this)">Medium</button>
+        <button class="tp" onclick="selTask('hard',this)">Hard</button>
+        <button class="tp te" onclick="selTask('expert',this)">Expert</button>
+        <button class="tp ta" onclick="selTask('adversarial',this)">Adversarial</button>
+      </div>
+      <button class="btn btn-primary" id="resetBtn" onclick="doReset()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Patient
+      </button>
     </div>
-  </div>
+  </header>
 
-  <div class="layout">
-    <div>
-      <div class="section">
-        <div class="sec-label">Patient Observation</div>
-        <div class="card" id="patientCard">
-          <div class="empty">Click <strong style="color:var(--text)">New Patient</strong> to begin an episode</div>
+  <div class="content">
+
+    <!-- ── STAT CARDS ── -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-ico ico-teal">🏥</div>
+        <div><div class="stat-label">Episodes</div><div class="stat-value" id="aEp">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico ico-green">📈</div>
+        <div><div class="stat-label">Avg Reward</div><div class="stat-value" id="aAvg">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico ico-red">🚨</div>
+        <div><div class="stat-label">Missed Emergencies</div><div class="stat-value sv-red" id="aMiss">—</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-ico ico-amber">⚠️</div>
+        <div><div class="stat-label">Overtriage Rate</div><div class="stat-value sv-amber" id="aOver">—</div></div>
+      </div>
+    </div>
+
+    <!-- ── CHARTS ── -->
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Reward History</div>
+            <div class="card-sub">Per-episode reward trend</div>
+          </div>
+        </div>
+        <div class="card-body"><canvas id="rewardChart" height="140"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Triage Distribution</div>
+            <div class="card-sub">Urgency level breakdown</div>
+          </div>
+        </div>
+        <div class="card-body"><canvas id="triageChart" height="140"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ── PATIENT + TRIAGE PANEL ── -->
+    <div class="main-grid" id="triage-section">
+
+      <!-- Left: Patient -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Patient Observation</div>
+          <span id="taskBadge" class="task-badge" style="display:none"></span>
+        </div>
+        <div class="card-body" id="patientBody">
+          <div class="empty">Click <b>New Patient</b> to begin an episode</div>
         </div>
       </div>
 
-      <div class="section">
-        <div class="sec-label">Episode History</div>
-        <div id="histContainer">
-          <div class="card"><div class="empty">No episodes yet</div></div>
-        </div>
-      </div>
+      <!-- Right: Decision + Reward -->
+      <div style="display:flex;flex-direction:column;gap:14px">
 
-      <div class="section">
-        <div class="sec-label">Log</div>
-        <div class="log-panel" id="logPanel"></div>
-      </div>
-    </div>
-
-    <div>
-      <div class="section">
-        <div class="sec-label">Triage Decision</div>
+        <!-- Triage Decision -->
         <div class="card">
-          <div class="urgency-grid">
-            <div class="u-btn" onclick="selUrgency(0)"><div class="u-num" style="color:var(--green)">0</div><div class="u-lbl">Self-Care</div></div>
-            <div class="u-btn" onclick="selUrgency(1)"><div class="u-num" style="color:var(--amber)">1</div><div class="u-lbl">Non-Urgent</div></div>
-            <div class="u-btn" onclick="selUrgency(2)"><div class="u-num" style="color:#e09550">2</div><div class="u-lbl">Urgent</div></div>
-            <div class="u-btn" onclick="selUrgency(3)"><div class="u-num" style="color:var(--red)">3</div><div class="u-lbl">Emergency</div></div>
-          </div>
+          <div class="card-head"><div class="card-title">Triage Decision</div></div>
+          <div class="card-body">
 
-          <div class="field">
-            <label>Reasoning</label>
-            <textarea id="reasoning" placeholder="Describe your clinical reasoning..."></textarea>
-          </div>
-          <div class="field">
-            <label>Recommended Action</label>
-            <input id="recommended" type="text" placeholder="e.g. Refer to emergency department"/>
-          </div>
-          <div class="field">
-            <label>Estimated Wait (minutes)</label>
-            <input id="waitTime" type="number" value="0" min="0"/>
-          </div>
-          <div class="field">
-            <label>Predicted Diagnosis <span class="opt-label">— optional · +0.3 reward</span></label>
-            <input id="diagnosis" type="text" placeholder="e.g. Acute Myocardial Infarction"/>
-          </div>
+            <div class="urgency-grid">
+              <div class="u-btn" onclick="selUrgency(0)">
+                <div class="u-num" style="color:var(--green)">0</div>
+                <div class="u-text">Self-Care</div>
+              </div>
+              <div class="u-btn" onclick="selUrgency(1)">
+                <div class="u-num" style="color:var(--amber)">1</div>
+                <div class="u-text">Non-Urgent</div>
+              </div>
+              <div class="u-btn" onclick="selUrgency(2)">
+                <div class="u-num" style="color:var(--orange)">2</div>
+                <div class="u-text">Urgent</div>
+              </div>
+              <div class="u-btn" onclick="selUrgency(3)">
+                <div class="u-num" style="color:var(--red)">3</div>
+                <div class="u-text">Emergency</div>
+              </div>
+            </div>
 
-          <div class="btn-row">
-            <button class="btn btn-primary" id="resetBtn" onclick="doReset()">New Patient</button>
-            <button class="btn btn-secondary" id="stepBtn" onclick="doStep()" disabled>Submit</button>
+            <div class="field">
+              <label>Clinical Reasoning</label>
+              <textarea id="reasoning" placeholder="Assess symptoms, vitals, and chronic conditions…"></textarea>
+            </div>
+            <div class="field">
+              <label>Recommended Action</label>
+              <input id="recommended" type="text" placeholder="e.g. Refer to emergency department"/>
+            </div>
+            <div class="field">
+              <label>Est. Wait Time <span class="opt">(minutes)</span></label>
+              <input id="waitTime" type="number" value="0" min="0"/>
+            </div>
+            <div class="field">
+              <label>Predicted Diagnosis <span class="opt">optional · +0.3 reward bonus</span></label>
+              <input id="diagnosis" type="text" placeholder="e.g. Acute Myocardial Infarction"/>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary" style="flex:1" id="stepBtn" onclick="doStep()" disabled>Submit Triage</button>
+              <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="section">
-        <div class="sec-label">Reward</div>
-        <div class="card" id="rewardCard">
-          <div class="empty">No result yet</div>
+        <!-- Reward -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">Reward Breakdown</div></div>
+          <div class="card-body" id="rewardBody">
+            <div class="empty" style="padding:16px 0">Submit a decision to see reward signals</div>
+          </div>
         </div>
+
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- ── HISTORY TABLE ── -->
+    <div class="card" id="history-section" style="margin-bottom:22px">
+      <div class="card-head">
+        <div class="card-title">Episode History</div>
+        <span id="histCount" style="font-size:12px;color:var(--text3)">0 episodes</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Task</th><th>Patient</th>
+              <th>Predicted</th><th>Correct</th>
+              <th>Reward</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="histBody">
+            <tr><td colspan="7" class="empty">No episodes yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── CONSOLE LOG ── -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Console</div>
+        <button class="btn btn-secondary" style="padding:5px 12px;font-size:11px" onclick="clearLog()">Clear</button>
+      </div>
+      <div style="padding:12px 16px">
+        <div class="log-wrap" id="logPanel"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
 
 <script>
 const BASE = window.location.origin;
-let task = 'easy', urgency = null, hist = [];
-const UL = ['Self-Care','Non-Urgent','Urgent','Emergency'];
-const UC = ['var(--green)','var(--amber)','#e09550','var(--red)'];
-const UB = ['rgba(63,185,80,.15)','rgba(227,179,65,.15)','rgba(224,149,80,.15)','rgba(248,81,73,.15)'];
+let task = 'easy', urgency = null, hist = [], epNum = 0;
+let rwHistory = [], triageCounts = [0,0,0,0];
+let lastPatientId = '—';
 
-function log(msg, cls='') {
-  const p = document.getElementById('logPanel');
-  const t = new Date().toLocaleTimeString('en-IN',{hour12:false});
-  p.innerHTML += `<div class="le"><span class="lt">${t}</span><span class="${cls}">${msg}</span></div>`;
-  p.scrollTop = p.scrollHeight;
+const UL  = ['Self-Care','Non-Urgent','Urgent','Emergency'];
+const UC  = ['var(--green)','var(--amber)','var(--orange)','var(--red)'];
+const UBG = ['#f0fdf4','#fffbeb','#fff7ed','#fef2f2'];
+
+/* ── helpers ─────────────────────────────────── */
+function log(msg, cls=''){
+  const p=document.getElementById('logPanel');
+  const t=new Date().toLocaleTimeString('en-IN',{hour12:false});
+  p.innerHTML+=`<div class="le"><span class="lt">${t}</span><span class="${cls}">${msg}</span></div>`;
+  p.scrollTop=p.scrollHeight;
+}
+function clearLog(){ document.getElementById('logPanel').innerHTML=''; }
+
+function setStatus(ok){
+  document.getElementById('statusDot').className='status-dot'+(ok?'':' off');
+  document.getElementById('statusTitle').textContent=ok?'Online':'Offline';
 }
 
-function setStatus(ok) {
-  document.getElementById('statusDot').className = 'status-dot' + (ok ? '' : ' offline');
-  document.getElementById('statusTxt').textContent = ok ? 'Online' : 'Offline';
+function scrollTo(id){
+  const el=document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  return false;
 }
 
-function selTask(t2, el) {
-  document.querySelectorAll('.task-btn').forEach(b => b.classList.remove('active'));
+/* ── Charts ───────────────────────────────────── */
+const rwCtx = document.getElementById('rewardChart').getContext('2d');
+const rwChart = new Chart(rwCtx,{
+  type:'line',
+  data:{labels:[],datasets:[{
+    label:'Reward',data:[],
+    borderColor:'#0d9488',backgroundColor:'rgba(13,148,136,.09)',
+    borderWidth:2,fill:true,tension:.4,
+    pointRadius:4,pointBackgroundColor:'#0d9488',pointBorderColor:'#fff',pointBorderWidth:2,
+  }]},
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{grid:{color:'#f3f4f6'},ticks:{color:'#9ca3af',font:{size:11,family:'Plus Jakarta Sans'}}},
+      y:{grid:{color:'#f3f4f6'},ticks:{color:'#9ca3af',font:{size:11,family:'Plus Jakarta Sans'}},min:-1.2,max:1.8},
+    }
+  }
+});
+
+const trCtx = document.getElementById('triageChart').getContext('2d');
+const trChart = new Chart(trCtx,{
+  type:'doughnut',
+  data:{
+    labels:['Self-Care','Non-Urgent','Urgent','Emergency'],
+    datasets:[{data:[0,0,0,0],backgroundColor:['#10b981','#f59e0b','#f97316','#ef4444'],borderWidth:0,hoverOffset:4}]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:12,family:'Plus Jakarta Sans'},color:'#6b7280',padding:14}}}
+  }
+});
+
+/* ── Task select ──────────────────────────────── */
+function selTask(t2,el){
+  document.querySelectorAll('.tp').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
-  task = t2;
-  log(`Task: ${t2}`, 'lb');
+  task=t2;
+  log(`Task set → ${t2}`,'lb');
 }
 
-function selUrgency(level) {
-  urgency = level;
-  document.querySelectorAll('.u-btn').forEach((b, i) => {
-    b.className = 'u-btn' + (i === level ? ` sel-${level}` : '');
+/* ── Urgency select ───────────────────────────── */
+function selUrgency(lvl){
+  urgency=lvl;
+  document.querySelectorAll('.u-btn').forEach((b,i)=>{
+    b.className='u-btn'+(i===lvl?` s${lvl}`:'');
   });
 }
 
-async function doReset() {
-  document.getElementById('resetBtn').disabled = true;
-  log(`Resetting — task: ${task}`, 'lb');
-  try {
-    const r = await fetch(`${BASE}/reset`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({task})
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const obs = await r.json();
-    renderPatient(obs);
-    document.getElementById('stepBtn').disabled = false;
-    document.getElementById('rewardCard').innerHTML = '<div class="empty">No result yet</div>';
-    log(`Patient ${obs.patient_id} loaded`, 'lg');
-    setStatus(true);
-    fetchAnalytics();
-  } catch(e) { log(`Reset failed: ${e.message}`, 'lr'); setStatus(false); }
-  document.getElementById('resetBtn').disabled = false;
+/* ── Clear form ───────────────────────────────── */
+function clearForm(){
+  document.getElementById('reasoning').value='';
+  document.getElementById('recommended').value='';
+  document.getElementById('waitTime').value='0';
+  document.getElementById('diagnosis').value='';
+  urgency=null;
+  document.querySelectorAll('.u-btn').forEach(b=>b.className='u-btn');
 }
 
-async function doStep() {
-  if (urgency === null) { log('Select urgency level', 'la'); return; }
-  const reasoning = document.getElementById('reasoning').value.trim();
-  if (!reasoning) { log('Reasoning is required', 'la'); return; }
-  document.getElementById('stepBtn').disabled = true;
-  const payload = {
-    urgency_level: urgency,
-    reasoning,
-    recommended_action: document.getElementById('recommended').value || 'Refer to doctor',
-    estimated_wait_minutes: parseInt(document.getElementById('waitTime').value)||0,
-    predicted_diagnosis: document.getElementById('diagnosis').value || null,
-  };
-  try {
-    const r = await fetch(`${BASE}/step`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
+/* ── Reset ────────────────────────────────────── */
+async function doReset(){
+  document.getElementById('resetBtn').disabled=true;
+  log(`Loading patient — task: ${task}`,'lb');
+  try{
+    const r=await fetch(`${BASE}/reset`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({task})
     });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const result = await r.json();
-    renderReward(result, payload);
-    addHist(result);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const obs=await r.json();
+    lastPatientId=obs.patient_id;
+    renderPatient(obs);
+    document.getElementById('stepBtn').disabled=false;
+    document.getElementById('rewardBody').innerHTML='<div class="empty" style="padding:16px 0">Submit a decision to see reward signals</div>';
+    const badge=document.getElementById('taskBadge');
+    badge.textContent=task; badge.style.display='';
+    log(`Patient ${obs.patient_id} loaded (age ${obs.age})`,'lg');
+    setStatus(true);
     fetchAnalytics();
-    const rw = result.reward;
-    log(`Reward: ${rw>0?'+':''}${rw} · correct: ${UL[result.info?.correct_urgency]}`, rw>0?'lg':'lr');
-  } catch(e) {
-    log(`Step failed: ${e.message}`, 'lr');
-    document.getElementById('stepBtn').disabled = false;
+  }catch(e){
+    log(`Reset failed: ${e.message}`,'lr');
+    setStatus(false);
+  }
+  document.getElementById('resetBtn').disabled=false;
+}
+
+/* ── Step ─────────────────────────────────────── */
+async function doStep(){
+  if(urgency===null){ log('Select an urgency level first','la'); return; }
+  const reasoning=document.getElementById('reasoning').value.trim();
+  if(!reasoning){ log('Clinical reasoning is required','la'); return; }
+
+  document.getElementById('stepBtn').disabled=true;
+  const payload={
+    urgency_level:urgency,
+    reasoning,
+    recommended_action:document.getElementById('recommended').value||'Refer to doctor',
+    estimated_wait_minutes:parseInt(document.getElementById('waitTime').value)||0,
+    predicted_diagnosis:document.getElementById('diagnosis').value||null,
+  };
+
+  try{
+    const r=await fetch(`${BASE}/step`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const result=await r.json();
+    renderReward(result,payload);
+    addHistory(result,payload);
+    updateCharts(result);
+    fetchAnalytics();
+    const rw=result.reward;
+    log(`Reward: ${rw>0?'+':''}${rw}  |  correct: ${UL[result.info?.correct_urgency]}  |  predicted: ${UL[result.info?.predicted_urgency]}`,rw>0?'lg':'lr');
+  }catch(e){
+    log(`Step failed: ${e.message}`,'lr');
+    document.getElementById('stepBtn').disabled=false;
   }
 }
 
-function vClass(key, val) {
-  const m = {
+/* ── Vital severity class ─────────────────────── */
+function vCls(key,val){
+  const m={
     heart_rate:{w:100,c:120},
     oxygen_saturation:{w:95,c:92,low:true},
     temperature:{w:38.5,c:39.5},
     systolic_bp:{w:140,c:180},
     respiratory_rate:{w:20,c:28},
   };
-  const t = m[key]; if (!t) return '';
-  if (t.low) return val<t.c?'crit':val<t.w?'warn':'';
-  if (key==='systolic_bp'&&val<90) return 'crit';
+  const t=m[key]; if(!t) return '';
+  if(t.low) return val<t.c?'crit':val<t.w?'warn':'';
+  if(key==='systolic_bp'&&val<90) return 'crit';
   return val>=t.c?'crit':val>=t.w?'warn':'';
 }
 
-function renderPatient(obs) {
-  const v = obs.vitals||{};
-  const alertKw = ['chest pain','shortness of breath','confusion','slurred speech','coughing blood','loss of consciousness'];
-  const vitalsData = [
-    {key:'heart_rate',        label:'Heart Rate',  val:v.heart_rate,        unit:'BPM'},
-    {key:'oxygen_saturation', label:'SpO₂',        val:v.oxygen_saturation, unit:'%'},
-    {key:'temperature',       label:'Temp',        val:v.temperature,       unit:'°C'},
-    {key:'systolic_bp',       label:'Systolic BP', val:v.systolic_bp,       unit:'mmHg'},
-    {key:'diastolic_bp',      label:'Diastolic BP',val:v.diastolic_bp,      unit:'mmHg'},
-    {key:'respiratory_rate',  label:'Resp Rate',   val:v.respiratory_rate,  unit:'br/min'},
+/* ── Render Patient ───────────────────────────── */
+function renderPatient(obs){
+  const v=obs.vitals||{};
+  const alertKw=['chest pain','shortness of breath','confusion','slurred speech','coughing blood','loss of consciousness'];
+
+  const vitals=[
+    {key:'heart_rate',       label:'Heart Rate', val:v.heart_rate,        unit:'BPM'},
+    {key:'oxygen_saturation',label:'SpO₂',       val:v.oxygen_saturation, unit:'%'},
+    {key:'temperature',      label:'Temp',        val:v.temperature,       unit:'°C'},
+    {key:'systolic_bp',      label:'BP Systolic', val:v.systolic_bp,       unit:'mmHg'},
+    {key:'diastolic_bp',     label:'BP Diastolic',val:v.diastolic_bp,      unit:'mmHg'},
+    {key:'respiratory_rate', label:'Resp Rate',   val:v.respiratory_rate,  unit:'br/min'},
   ];
 
-  const vitalsHtml = vitalsData.map(({key,label,val,unit}) => {
-    const c = vClass(key,val);
-    return `<div class="vit ${c}"><div class="vit-name">${label}</div><div class="vit-val ${c}">${val??'—'}</div><div class="vit-unit">${unit}</div></div>`;
+  const vitalsHtml=vitals.map(({key,label,val,unit})=>{
+    const c=vCls(key,val);
+    return `<div class="vit ${c}">
+      <div class="vit-label">${label}</div>
+      <div class="vit-val ${c}">${val??'—'}</div>
+      <div class="vit-unit">${unit}</div>
+    </div>`;
   }).join('');
 
-  const sympHtml = (obs.symptoms||[]).map(s =>
-    `<span class="chip${alertKw.some(k=>s.toLowerCase().includes(k))?' alert':''}">${s}</span>`
-  ).join('');
+  const sympHtml=(obs.symptoms||[]).map(s=>{
+    const a=alertKw.some(k=>s.toLowerCase().includes(k));
+    return `<span class="chip${a?' danger':''}">${s}</span>`;
+  }).join('');
 
-  const chrHtml = obs.chronic_conditions?.length
-    ? obs.chronic_conditions.map(c=>`<span class="chip">${c}</span>`).join('')
-    : '<span style="color:var(--text3);font-size:12px;">None</span>';
+  const chrHtml=obs.chronic_conditions?.length
+    ?obs.chronic_conditions.map(c=>`<span class="chip">${c}</span>`).join('')
+    :'<span style="color:var(--text3);font-size:12px">None</span>';
 
-  const visHtml = obs.visit_history?.length
-    ? obs.visit_history.map(vv =>
-        `<div class="visit-row">
-          <span style="color:${UC[vv.urgency_assigned]}">${UL[vv.urgency_assigned]}</span>
-          <span style="color:var(--text3)">reward ${vv.reward?.toFixed(2)}</span>
-          <span>${(vv.symptoms||[]).slice(0,2).join(', ')}</span>
-        </div>`).join('')
-    : '<div style="color:var(--text3);font-size:11px;font-family:\'JetBrains Mono\',monospace;">No prior visits this session</div>';
+  const visHtml=obs.visit_history?.length
+    ?obs.visit_history.map(vv=>`
+      <div class="visit-row">
+        <span style="font-weight:700;color:${UC[vv.urgency_assigned]}">${UL[vv.urgency_assigned]}</span>
+        <span>·</span>
+        <span>reward ${vv.reward?.toFixed(2)}</span>
+        <span>·</span>
+        <span>${(vv.symptoms||[]).slice(0,2).join(', ')}</span>
+      </div>`).join('')
+    :'<div style="color:var(--text3);font-size:12px">No prior visits this session</div>';
 
-  document.getElementById('patientCard').innerHTML = `
+  document.getElementById('patientBody').innerHTML=`
     <div class="patient-header">
       <div>
-        <div class="p-id">${obs.patient_id}</div>
-        <div class="p-sub">Age ${obs.age} &nbsp;·&nbsp; Pain ${obs.pain_scale}/10 &nbsp;·&nbsp; ${obs.symptom_duration_hours}h duration</div>
+        <div class="patient-id">${obs.patient_id}</div>
+        <div class="patient-sub">Age ${obs.age} &nbsp;·&nbsp; Pain ${obs.pain_scale}/10 &nbsp;·&nbsp; Duration ${obs.symptom_duration_hours}h</div>
       </div>
-      <div class="task-pill">${task}</div>
     </div>
     <div class="two-col">
       <div>
-        <div class="field-label">Symptoms</div>
-        <div class="chip-row">${sympHtml}</div>
-        <div style="margin-top:16px;">
-          <div class="field-label">Chronic Conditions</div>
-          <div class="chip-row">${chrHtml}</div>
+        <div class="block-label">Symptoms</div>
+        <div class="chips">${sympHtml}</div>
+        <div style="margin-top:16px">
+          <div class="block-label">Chronic Conditions</div>
+          <div class="chips">${chrHtml}</div>
         </div>
-        <div style="margin-top:16px;">
-          <div class="field-label">Visit History</div>
+        <div style="margin-top:16px">
+          <div class="block-label">Visit History</div>
           ${visHtml}
         </div>
         <div class="ctx-row">
@@ -602,31 +726,32 @@ function renderPatient(obs) {
         </div>
       </div>
       <div>
-        <div class="field-label">Vital Signs</div>
+        <div class="block-label">Vital Signs</div>
         <div class="vitals-grid">${vitalsHtml}</div>
       </div>
     </div>`;
 }
 
-function renderReward(result, payload) {
-  const rw = result.reward;
-  const correct = result.info?.correct_urgency;
-  const predicted = result.info?.predicted_urgency;
-  const diff = Math.abs(correct-predicted);
-  const dt = result.info?.decision_time_seconds||0;
+/* ── Render Reward ────────────────────────────── */
+function renderReward(result,payload){
+  const rw=result.reward;
+  const correct=result.info?.correct_urgency;
+  const predicted=result.info?.predicted_urgency;
+  const diff=Math.abs(correct-predicted);
+  const dt=result.info?.decision_time_seconds||0;
 
-  const sigs = [];
-  sigs.push({name:'Accuracy', val: diff===0?1.0:diff===1?0.4:-0.3*diff});
-  if (correct===3&&predicted===3&&dt<30) sigs.push({name:'Speed bonus', val:0.2});
-  if (diff===0) sigs.push({name:'Chronic awareness', val:0.1});
-  if (payload.predicted_diagnosis&&diff===0) sigs.push({name:'Diagnosis prediction', val:0.3});
-  if (predicted-correct>=2) sigs.push({name:'Overtriage penalty', val:-0.2});
-  if (correct===3&&predicted<2) sigs.push({name:'Missed emergency', val:-0.5});
+  const sigs=[];
+  sigs.push({name:'Accuracy',val:diff===0?1.0:diff===1?0.4:-0.3*diff});
+  if(correct===3&&predicted===3&&dt<30) sigs.push({name:'Speed bonus',val:0.2});
+  if(diff===0) sigs.push({name:'Chronic awareness',val:0.1});
+  if(payload.predicted_diagnosis&&diff===0) sigs.push({name:'Diagnosis prediction',val:0.3});
+  if(predicted-correct>=2) sigs.push({name:'Overtriage penalty',val:-0.2});
+  if(correct===3&&predicted<2) sigs.push({name:'Missed emergency',val:-0.5});
 
-  const maxAbs = Math.max(...sigs.map(s=>Math.abs(s.val)),0.01);
-  const sigsHtml = sigs.map(s => {
-    const pos = s.val>=0;
-    const pct = Math.round(Math.abs(s.val)/maxAbs*100);
+  const maxA=Math.max(...sigs.map(s=>Math.abs(s.val)),0.01);
+  const sigsHtml=sigs.map(s=>{
+    const pos=s.val>=0;
+    const pct=Math.round(Math.abs(s.val)/maxA*100);
     return `<div class="sig-row">
       <div class="sig-name">${s.name}</div>
       <div class="sig-bar"><div class="sig-fill ${pos?'pos':'neg'}" style="width:${pct}%"></div></div>
@@ -634,56 +759,104 @@ function renderReward(result, payload) {
     </div>`;
   }).join('');
 
-  const rwColor = rw>0?'var(--green)':rw<0?'var(--red)':'var(--text2)';
-  document.getElementById('rewardCard').innerHTML = `
-    <div class="rw-header">
+  const rwColor=rw>0?'var(--green)':rw<0?'var(--red)':'var(--text3)';
+  document.getElementById('rewardBody').innerHTML=`
+    <div class="rw-total">
       <div>
-        <div class="rw-total" style="color:${rwColor}">${rw>0?'+':''}${rw}</div>
-        <div class="rw-meta">
-          Correct: <span style="color:${UC[correct]}">${UL[correct]}</span>
-          &nbsp;·&nbsp; Predicted: <span style="color:${UC[predicted]}">${UL[predicted]}</span>
+        <div class="rw-num" style="color:${rwColor}">${rw>0?'+':''}${rw}</div>
+        <div class="rw-labels">
+          Correct: <span style="color:${UC[correct]};font-weight:700">${UL[correct]}</span>
+          &nbsp;·&nbsp;
+          Predicted: <span style="color:${UC[predicted]};font-weight:700">${UL[predicted]}</span>
         </div>
       </div>
-      <div class="rw-dt">${dt}s<br>decision</div>
+      <div class="rw-dt">${dt}s<br>decision time</div>
     </div>
     ${sigsHtml}`;
 }
 
-function addHist(result) {
-  hist.unshift({...result, taskName: task});
-  if (hist.length>8) hist.pop();
-  document.getElementById('histContainer').innerHTML = hist.map(r => {
-    const c=r.info?.correct_urgency, p=r.info?.predicted_urgency, rw=r.reward;
-    return `<div class="hist-row">
-      <div class="h-badge" style="background:${UB[p]};color:${UC[p]}">${p}</div>
-      <div class="h-info">${r.taskName} · predicted ${UL[p]} · correct ${UL[c]}</div>
-      <div class="h-rw" style="color:${rw>0?'var(--green)':'var(--red)'}">${rw>0?'+':''}${rw}</div>
-    </div>`;
+/* ── Add History ──────────────────────────────── */
+function addHistory(result,payload){
+  epNum++;
+  hist.unshift({result,payload,task,ep:epNum,ts:new Date()});
+  if(hist.length>20) hist.pop();
+
+  document.getElementById('histCount').textContent=`${hist.length} episode${hist.length!==1?'s':''}`;
+  document.getElementById('histBody').innerHTML=hist.map(h=>{
+    const c=h.result.info?.correct_urgency;
+    const p=h.result.info?.predicted_urgency;
+    const rw=h.result.reward;
+    const rwColor=rw>0?'var(--green)':'var(--red)';
+    const pid=h.result.observation?.patient_id||lastPatientId;
+    return `<tr>
+      <td style="color:var(--text3);font-family:'JetBrains Mono',monospace">#${h.ep}</td>
+      <td style="text-transform:capitalize;font-weight:500">${h.task}</td>
+      <td style="font-weight:500">${pid}</td>
+      <td>
+        <span class="u-badge" style="background:${UBG[p]};color:${UC[p]}">${p}</span>
+        <span style="margin-left:6px">${UL[p]}</span>
+      </td>
+      <td>
+        <span class="u-badge" style="background:${UBG[c]};color:${UC[c]}">${c}</span>
+        <span style="margin-left:6px">${UL[c]}</span>
+      </td>
+      <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:${rwColor}">${rw>0?'+':''}${rw}</td>
+      <td style="color:var(--text3)">${h.ts.toLocaleTimeString()}</td>
+    </tr>`;
   }).join('');
 }
 
-async function fetchAnalytics() {
-  try {
-    const r = await fetch(`${BASE}/analytics`);
-    if (!r.ok) return;
-    const d = await r.json();
-    document.getElementById('aEp').textContent  = d.total_episodes??'—';
-    const avg = d.avg_reward;
-    const el = document.getElementById('aAvg');
-    el.textContent = avg!=null?(avg>0?'+':'')+avg.toFixed(3):'—';
-    el.className = 'stat-val '+(avg>0?'c-green':avg<0?'c-red':'c-text');
-    document.getElementById('aMiss').textContent = d.missed_emergencies_rate!=null?(d.missed_emergencies_rate*100).toFixed(1)+'%':'—';
-    document.getElementById('aOver').textContent = d.overtriage_rate!=null?(d.overtriage_rate*100).toFixed(1)+'%':'—';
-  } catch(_) {}
+/* ── Update Charts ────────────────────────────── */
+function updateCharts(result){
+  const rw=result.reward;
+  const predicted=result.info?.predicted_urgency??0;
+
+  rwHistory.push(rw);
+  if(rwHistory.length>20) rwHistory.shift();
+  rwChart.data.labels=rwHistory.map((_,i)=>`#${epNum-rwHistory.length+i+1}`);
+  rwChart.data.datasets[0].data=[...rwHistory];
+  rwChart.update();
+
+  triageCounts[predicted]++;
+  trChart.data.datasets[0].data=[...triageCounts];
+  trChart.update();
 }
 
-(async () => {
-  log('MediGuide RL initialized');
-  try {
-    const r = await fetch(`${BASE}/state`);
-    if (r.ok) { setStatus(true); log('API connected', 'lg'); fetchAnalytics(); }
-    else { setStatus(false); log('API unavailable', 'lr'); }
-  } catch(_) { setStatus(false); log('API unavailable', 'lr'); }
+/* ── Analytics ────────────────────────────────── */
+async function fetchAnalytics(){
+  try{
+    const r=await fetch(`${BASE}/analytics`);
+    if(!r.ok) return;
+    const d=await r.json();
+    document.getElementById('aEp').textContent=d.total_episodes??'—';
+    const avg=d.avg_reward;
+    const el=document.getElementById('aAvg');
+    el.textContent=avg!=null?(avg>0?'+':'')+avg.toFixed(3):'—';
+    el.className='stat-value'+(avg>0?' sv-green':avg<0?' sv-red':'');
+    document.getElementById('aMiss').textContent=
+      d.missed_emergencies_rate!=null?(d.missed_emergencies_rate*100).toFixed(1)+'%':'—';
+    document.getElementById('aOver').textContent=
+      d.overtriage_rate!=null?(d.overtriage_rate*100).toFixed(1)+'%':'—';
+  }catch(_){}
+}
+
+/* ── Init ─────────────────────────────────────── */
+(async()=>{
+  log('MediGuide RL initialized','lg');
+  try{
+    const r=await fetch(`${BASE}/state`);
+    if(r.ok){
+      setStatus(true);
+      log('API connected','lg');
+      fetchAnalytics();
+    }else{
+      setStatus(false);
+      log('API returned error','lr');
+    }
+  }catch(_){
+    setStatus(false);
+    log('API unavailable — start server first','lr');
+  }
 })();
 </script>
 </body>

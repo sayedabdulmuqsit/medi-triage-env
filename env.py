@@ -9,7 +9,8 @@ from models import (
     UrgencyLevel, VitalSigns
 )
 
-DB_PATH = "/tmp/mediguide_sessions.db"
+import os
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mediguide_sessions.db")
 
 
 def _init_db():
