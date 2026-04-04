@@ -1,421 +1,690 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MediGuide RL — Healthcare Triage Environment</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MediGuide RL</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-:root{
-  --bg:#08080c;--surface:#0f0f16;--card:#13131c;--elevated:#181825;
-  --b0:rgba(140,120,255,0.07);--b1:rgba(140,120,255,0.16);--b2:rgba(140,120,255,0.30);
-  --accent:#a78bfa;--accent-a:rgba(167,139,250,0.08);--accent-b:rgba(167,139,250,0.16);
-  --emerald:#34d399;--rose:#f87171;--amber:#fbbf24;
-  --txt:#ede9fe;--txt2:#6d6a8a;--txt3:#3a3850;
-  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+:root {
+  --bg:      #0d1117;
+  --surface: #161b22;
+  --surface2:#1c2230;
+  --border:  #21262d;
+  --border2: #30363d;
+  --text:    #e6edf3;
+  --text2:   #8b949e;
+  --text3:   #484f58;
+  --green:   #3fb950;
+  --green2:  #238636;
+  --blue:    #58a6ff;
+  --red:     #f85149;
+  --amber:   #e3b341;
+  --purple:  #bc8cff;
 }
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{font-family:var(--font);background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
-.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(140,120,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(140,120,255,0.03) 1px,transparent 1px);background-size:52px 52px;}
-.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse 55% 45% at 10% 5%,rgba(100,60,220,0.07) 0%,transparent 100%),radial-gradient(ellipse 45% 55% at 90% 95%,rgba(52,211,153,0.05) 0%,transparent 100%);}
-.wrap{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:0 28px;}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100vh;
+}
 
-/* NAV */
-nav{position:sticky;top:0;z-index:200;background:rgba(8,8,12,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--b0);}
-.nav-inner{display:flex;align-items:center;justify-content:space-between;max-width:1300px;margin:0 auto;padding:0 28px;height:54px;}
-.logo{display:flex;align-items:center;gap:9px;text-decoration:none;}
-.logo-mark{width:30px;height:30px;border:1px solid var(--b2);border-radius:7px;display:grid;place-items:center;background:var(--accent-a);flex-shrink:0;}
-.logo-mark svg{width:15px;height:15px;}
-.logo-name{font-size:15px;font-weight:700;letter-spacing:-0.2px;color:var(--txt);}
-.logo-name em{font-style:normal;color:var(--accent);}
-.nav-links{display:flex;align-items:center;gap:2px;}
-.nav-a{font-size:12px;font-weight:500;padding:6px 12px;border-radius:5px;color:var(--txt2);text-decoration:none;letter-spacing:0.2px;transition:color 0.15s,background 0.15s;border:1px solid transparent;}
-.nav-a:hover{color:var(--txt);background:var(--accent-a);border-color:var(--b0);}
-.nav-a.on{color:var(--accent);background:var(--accent-a);border-color:var(--b1);}
-.nav-cta{font-family:var(--font);font-size:12px;font-weight:700;padding:7px 16px;border-radius:6px;background:var(--accent);color:#0a0812;text-decoration:none;transition:transform 0.15s,box-shadow 0.15s;margin-left:6px;}
-.nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(167,139,250,0.3);}
+nav {
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 100;
+}
+.nav-logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.nav-logo span { color: var(--green); }
+.nav-sep { width: 1px; height: 16px; background: var(--border2); }
+.nav-tag { font-size: 12px; color: var(--text3); }
+.nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  transition: background .3s;
+}
+.status-dot.offline { background: var(--red); }
+.status-txt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); }
 
-/* HERO */
-.hero{padding:90px 0 64px;text-align:center;}
-.hero-pill{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--accent);border:1px solid var(--b1);padding:5px 14px;border-radius:99px;background:var(--accent-a);margin-bottom:32px;text-transform:uppercase;}
-.pulse{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 2s ease-in-out infinite;}
-@keyframes blink{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.3;transform:scale(0.7);}}
-.hero-h1{font-size:clamp(42px,6.5vw,76px);font-weight:800;line-height:1.02;letter-spacing:-2.5px;margin-bottom:22px;}
-.hero-h1 .t1{display:block;color:var(--txt);}
-.hero-h1 .t2{display:block;background:linear-gradient(110deg,var(--accent) 0%,var(--emerald) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-@supports not (-webkit-background-clip:text){.hero-h1 .t2{color:var(--accent);background:none;}}
-.hero-p{font-size:16px;line-height:1.75;color:var(--txt2);max-width:480px;margin:0 auto 36px;font-weight:400;}
-.hero-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
-.btn-fill{display:inline-flex;align-items:center;gap:6px;font-family:var(--font);font-size:13px;font-weight:700;padding:11px 24px;border-radius:7px;background:var(--accent);color:#0a0812;text-decoration:none;transition:transform 0.15s,box-shadow 0.15s;border:none;cursor:pointer;}
-.btn-fill:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(167,139,250,0.3);}
-.btn-ghost{display:inline-flex;align-items:center;gap:6px;font-family:var(--font);font-size:13px;font-weight:600;padding:11px 24px;border-radius:7px;background:transparent;color:var(--txt);text-decoration:none;transition:border-color 0.15s,background 0.15s;border:1px solid var(--b1);cursor:pointer;}
-.btn-ghost:hover{border-color:var(--b2);background:var(--accent-a);}
+.container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+.layout { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
 
-/* STATS */
-.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--b0);border-radius:10px;overflow:hidden;margin:52px 0 0;background:var(--b0);gap:1px;}
-.stat{background:var(--card);padding:26px 20px;text-align:center;transition:background 0.2s;}
-.stat:hover{background:var(--elevated);}
-.stat-n{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--accent);letter-spacing:-1px;line-height:1;margin-bottom:6px;display:block;}
-.stat-l{font-size:10px;font-weight:600;letter-spacing:1.8px;color:var(--txt3);text-transform:uppercase;}
+.section { margin-bottom: 24px; }
+.sec-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
 
-/* SECTION */
-.section{padding:64px 0;}
-.sec-tag{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--txt3);text-transform:uppercase;margin-bottom:6px;}
-.sec-h2{font-size:26px;font-weight:700;letter-spacing:-0.5px;color:var(--txt);margin-bottom:28px;}
-.divider{height:1px;background:var(--b0);}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+}
 
-/* CARD */
-.card{background:var(--card);border:1px solid var(--b0);border-radius:10px;overflow:hidden;transition:border-color 0.2s;}
-.card:hover{border-color:var(--b1);}
-.card-hd{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--b0);}
-.card-tt{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--txt3);text-transform:uppercase;}
-.card-bd{padding:18px;}
-.live-dot{width:7px;height:7px;border-radius:50%;background:var(--emerald);box-shadow:0 0 0 2px rgba(52,211,153,0.2);animation:blink 2s infinite;}
+.analytics-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.stat-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+.stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 500;
+}
+.c-green { color: var(--green); }
+.c-red   { color: var(--red); }
+.c-amber { color: var(--amber); }
+.c-text  { color: var(--text); }
 
-/* DEMO */
-.demo-wrap{display:grid;grid-template-columns:1fr 352px;gap:14px;align-items:start;}
-.tabs{display:flex;gap:5px;margin-bottom:16px;}
-.tab{flex:1;padding:7px 10px;text-align:center;border:1px solid var(--b0);border-radius:5px;background:transparent;cursor:pointer;font-family:var(--font);font-size:11px;font-weight:600;letter-spacing:0.5px;color:var(--txt2);transition:all 0.15s;}
-.tab:hover{border-color:var(--b1);color:var(--txt);}
-.on-easy{border-color:var(--emerald)!important;background:rgba(52,211,153,0.07)!important;color:var(--emerald)!important;}
-.on-med{border-color:var(--amber)!important;background:rgba(251,191,36,0.07)!important;color:var(--amber)!important;}
-.on-hard{border-color:var(--rose)!important;background:rgba(248,113,113,0.07)!important;color:var(--rose)!important;}
+.task-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.task-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .15s;
+}
+.task-btn:hover { background: var(--surface2); color: var(--text); }
+.task-btn.active         { border-color: var(--green);  color: var(--green);  background: rgba(63,185,80,.08); }
+.task-btn.t-expert.active  { border-color: var(--amber);  color: var(--amber);  background: rgba(227,179,65,.08); }
+.task-btn.t-adv.active   { border-color: var(--purple); color: var(--purple); background: rgba(188,140,255,.08); }
 
-/* PATIENT */
-.pbox{background:var(--surface);border:1px solid var(--b0);border-radius:7px;padding:15px;min-height:150px;margin-bottom:14px;position:relative;overflow:hidden;}
-.pbox::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.35;}
-.pid{font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:1.2px;margin-bottom:10px;text-transform:uppercase;}
-.p-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
-.p-field span{display:block;font-size:9px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--txt3);margin-bottom:2px;}
-.p-field strong{display:block;font-size:13px;font-weight:600;color:var(--txt);font-family:var(--mono);}
-.sym-row{grid-column:1/-1;}
-.sym-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px;}
-.sym-tag{font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:3px;border:1px solid var(--b1);color:var(--accent);background:var(--accent-a);letter-spacing:0.3px;}
-.empty-s{display:flex;flex-direction:column;align-items:center;justify-content:center;height:115px;gap:8px;}
-.empty-ico{width:32px;height:32px;border-radius:50%;border:1px solid var(--b1);display:grid;place-items:center;}
-.empty-ico svg{width:14px;height:14px;}
-.empty-lbl{font-size:12px;color:var(--txt3);}
+.patient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.p-id { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+.p-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  margin-top: 4px;
+}
+.task-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  text-transform: capitalize;
+}
 
-/* URGENCY */
-.u-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;}
-.u-btn{padding:9px 4px;border-radius:5px;border:1px solid var(--b0);background:transparent;cursor:pointer;text-align:center;transition:all 0.15s;font-family:var(--font);}
-.u-btn:hover{transform:translateY(-1px);}
-.u-num{display:block;font-family:var(--mono);font-size:16px;font-weight:500;line-height:1.2;}
-.u-lbl{display:block;font-size:8px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-top:2px;line-height:1.3;}
-.u0{border-color:rgba(52,211,153,0.2);}.u0 .u-num,.u0 .u-lbl{color:var(--emerald);}.u0.sel{background:rgba(52,211,153,0.08);border-color:var(--emerald);}
-.u1{border-color:rgba(167,139,250,0.2);}.u1 .u-num,.u1 .u-lbl{color:var(--accent);}.u1.sel{background:var(--accent-a);border-color:var(--accent);}
-.u2{border-color:rgba(251,191,36,0.2);}.u2 .u-num,.u2 .u-lbl{color:var(--amber);}.u2.sel{background:rgba(251,191,36,0.08);border-color:var(--amber);}
-.u3{border-color:rgba(248,113,113,0.2);}.u3 .u-num,.u3 .u-lbl{color:var(--rose);}.u3.sel{background:rgba(248,113,113,0.08);border-color:var(--rose);}
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.field-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
 
-/* RESULT */
-.result-panel{background:var(--surface);border:1px solid var(--b0);border-radius:7px;padding:13px 15px;font-family:var(--mono);font-size:11px;color:var(--txt2);line-height:1.8;min-height:72px;margin-top:10px;transition:border-color 0.2s;}
-.result-panel.win{border-color:rgba(52,211,153,0.3);}
-.result-panel.loss{border-color:rgba(248,113,113,0.3);}
-.result-panel.part{border-color:rgba(251,191,36,0.3);}
-.r-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.r-chip{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:600;letter-spacing:0.3px;}
-.cg{background:rgba(52,211,153,0.1);color:var(--emerald);}
-.cv{background:var(--accent-a);color:var(--accent);}
-.ca{background:rgba(251,191,36,0.1);color:var(--amber);}
-.cr{background:rgba(248,113,113,0.1);color:var(--rose);}
-.r-reward{font-size:18px;font-weight:500;}
-.r-msg{font-size:10px;color:var(--txt2);margin-top:4px;}
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  background: var(--surface2);
+}
+.chip.alert { border-color: rgba(248,81,73,.3); color: var(--red); background: rgba(248,81,73,.06); }
 
-/* RIGHT COL */
-.right-col{display:flex;flex-direction:column;gap:12px;}
-.score-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.sc{background:var(--surface);border:1px solid var(--b0);border-radius:7px;padding:13px 10px;text-align:center;position:relative;overflow:hidden;}
-.sc::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
-.sc.e::after{background:var(--emerald);}.sc.m::after{background:var(--amber);}.sc.h::after{background:var(--rose);}
-.sc-l{font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;}
-.sc.e .sc-l{color:var(--emerald);}.sc.m .sc-l{color:var(--amber);}.sc.h .sc-l{color:var(--rose);}
-.sc-v{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--txt);letter-spacing:-1px;}
-.rbar-list{display:flex;flex-direction:column;gap:9px;}
-.rbar-row{display:flex;align-items:center;gap:8px;}
-.rbar-lbl{font-family:var(--mono);font-size:9px;color:var(--txt3);width:88px;flex-shrink:0;letter-spacing:0.3px;}
-.rbar-track{flex:1;height:4px;background:var(--surface);border-radius:2px;overflow:hidden;}
-.rbar-fill{height:100%;border-radius:2px;width:0;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);}
-.rbar-val{font-family:var(--mono);font-size:10px;width:32px;text-align:right;flex-shrink:0;font-weight:500;}
-.sess-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.sess-item{background:var(--surface);border:1px solid var(--b0);border-radius:7px;padding:12px;text-align:center;}
-.sess-l{font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);margin-bottom:5px;display:block;}
-.sess-v{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--txt);display:block;}
+.vitals-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.vit {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 11px;
+}
+.vit.warn { border-color: rgba(227,179,65,.4); }
+.vit.crit { border-color: rgba(248,81,73,.4); }
+.vit-name { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+.vit-val  { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 500; }
+.vit-val.warn { color: var(--amber); }
+.vit-val.crit { color: var(--red); }
+.vit-unit { font-size: 10px; color: var(--text3); margin-top: 2px; }
 
-/* ENDPOINTS */
-.ep-list{display:flex;flex-direction:column;gap:6px;}
-.ep{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border:1px solid var(--b0);border-radius:7px;text-decoration:none;transition:all 0.15s;}
-.ep:hover{border-color:var(--b1);background:var(--card);transform:translateX(2px);}
-.badge{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:1px;padding:3px 6px;border-radius:3px;flex-shrink:0;min-width:34px;text-align:center;}
-.get{background:rgba(52,211,153,0.1);color:var(--emerald);border:1px solid rgba(52,211,153,0.2);}
-.post{background:var(--accent-a);color:var(--accent);border:1px solid var(--b1);}
-.ep-path{font-family:var(--mono);font-size:11px;color:var(--txt);flex:1;}
-.ep-desc{font-size:11px;color:var(--txt3);}
+.ctx-row { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+.ctx-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text3);
+}
 
-/* ARCH */
-.arch{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;align-items:center;}
-.arch::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--b1),var(--b2),var(--b1),transparent);transform:translateY(-50%);}
-.arch-n{position:relative;z-index:1;background:var(--card);border:1px solid var(--b1);border-radius:8px;padding:16px 10px;text-align:center;margin:0 8px;transition:border-color 0.2s,background 0.2s;}
-.arch-n:hover{border-color:var(--b2);background:var(--elevated);}
-.arch-n.hl{border-color:var(--b2);}
-.arch-ico{width:30px;height:30px;border-radius:6px;background:var(--accent-a);border:1px solid var(--b1);display:grid;place-items:center;margin:0 auto 8px;}
-.arch-ico svg{width:13px;height:13px;}
-.arch-lbl{font-size:11px;font-weight:600;color:var(--txt);letter-spacing:0.2px;display:block;}
-.arch-sub{font-family:var(--mono);font-size:8px;color:var(--txt3);margin-top:2px;letter-spacing:0.5px;display:block;}
+.visit-row {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text2);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+}
+.visit-row:last-child { border-bottom: none; }
 
-/* FOOTER */
-footer{border-top:1px solid var(--b0);padding:24px 0;margin-top:48px;}
-.foot-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-.foot-left{display:flex;align-items:center;gap:8px;}
-.foot-logo{font-size:13px;font-weight:700;color:var(--txt2);}
-.foot-logo em{font-style:normal;color:var(--accent);}
-.foot-sep{color:var(--txt3);font-size:12px;}
-.foot-desc{font-family:var(--mono);font-size:9px;color:var(--txt3);letter-spacing:0.5px;}
-.foot-right{display:flex;gap:5px;flex-wrap:wrap;}
-.foot-tag{font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid var(--b0);color:var(--txt3);letter-spacing:0.5px;}
+.urgency-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 16px; }
+.u-btn {
+  padding: 10px 4px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+.u-btn:hover { background: var(--surface); }
+.u-num { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 500; margin-bottom: 2px; }
+.u-lbl { font-size: 10px; color: var(--text3); }
+.u-btn.sel-0 { border-color: var(--green);  background: rgba(63,185,80,.08); }
+.u-btn.sel-1 { border-color: var(--amber);  background: rgba(227,179,65,.08); }
+.u-btn.sel-2 { border-color: #e09550;       background: rgba(224,149,80,.08); }
+.u-btn.sel-3 { border-color: var(--red);    background: rgba(248,81,73,.08); }
 
-/* REVEAL */
-.reveal{opacity:0;transform:translateY(14px);transition:opacity 0.5s ease,transform 0.5s ease;}
-.reveal.in{opacity:1;transform:translateY(0);}
+.field { margin-bottom: 13px; }
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.field input, .field textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 11px;
+  outline: none;
+  transition: border-color .15s;
+  resize: vertical;
+}
+.field input:focus, .field textarea:focus { border-color: var(--blue); }
+.field textarea { min-height: 68px; line-height: 1.5; }
 
-@media(max-width:900px){
-  .demo-wrap{grid-template-columns:1fr;}
-  .stats-bar{grid-template-columns:repeat(2,1fr);}
-  .arch{grid-template-columns:1fr 1fr;gap:8px;}
-  .arch::before{display:none;}
-  .nav-links .nav-a{display:none;}
+.opt-label { font-size: 10px; color: var(--text3); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.btn-row { display: flex; gap: 8px; }
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-primary   { background: var(--green2); color: #fff; }
+.btn-primary:hover { background: #2ea043; }
+.btn-secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
+.btn-secondary:hover { color: var(--text); }
+.btn:disabled  { opacity: .4; cursor: not-allowed; }
+
+.rw-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.rw-total  { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 500; }
+.rw-meta   { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.rw-dt     { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); text-align: right; }
+
+.sig-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.sig-name { font-size: 11px; color: var(--text2); flex: 1; }
+.sig-bar  { width: 72px; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.sig-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
+.sig-fill.pos { background: var(--green); }
+.sig-fill.neg { background: var(--red); }
+.sig-val  { font-family: 'JetBrains Mono', monospace; font-size: 11px; width: 38px; text-align: right; flex-shrink: 0; }
+.sig-val.pos { color: var(--green); }
+.sig-val.neg { color: var(--red); }
+
+.hist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: var(--surface2);
+  margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.h-badge {
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500; flex-shrink: 0;
+}
+.h-info { flex: 1; color: var(--text2); }
+.h-rw   { font-weight: 500; }
+
+.log-panel {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  max-height: 150px;
+  overflow-y: auto;
+  color: var(--text2);
+}
+.le { display: flex; gap: 10px; }
+.lt { color: var(--text3); flex-shrink: 0; }
+.lg { color: var(--green); }
+.lr { color: var(--red); }
+.lb { color: var(--blue); }
+.la { color: var(--amber); }
+
+.empty { padding: 28px; text-align: center; color: var(--text3); font-size: 13px; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+@media (max-width: 860px) {
+  .layout         { grid-template-columns: 1fr; }
+  .analytics-row  { grid-template-columns: 1fr 1fr; }
+  .vitals-grid    { grid-template-columns: 1fr 1fr; }
+  .two-col        { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
-<div class="bg-glow"></div>
 
 <nav>
-  <div class="nav-inner">
-    <a class="logo" href="#">
-      <div class="logo-mark">
-        <svg viewBox="0 0 15 15" fill="none">
-          <circle cx="7.5" cy="7.5" r="3" stroke="#a78bfa" stroke-width="1.2"/>
-          <path d="M7.5 1v3M7.5 11v3M1 7.5h3M11 7.5h3" stroke="#a78bfa" stroke-width="1.2" stroke-linecap="round"/>
-          <circle cx="7.5" cy="7.5" r="6" stroke="#a78bfa" stroke-width="0.4" opacity="0.3"/>
-        </svg>
-      </div>
-      <span class="logo-name">Medi<em>Guide</em> RL</span>
-    </a>
-    <div class="nav-links">
-      <a href="#demo" class="nav-a on">Demo</a>
-      <a href="#api" class="nav-a">API</a>
-      <a href="#arch" class="nav-a">Architecture</a>
-      <a href="https://huggingface.co/spaces/sayedabdulmuqsit11/medi-triage-env" class="nav-a">HF Space</a>
-      <a href="https://sayedabdulmuqsit11-medi-triage-env.hf.space/docs" class="nav-cta">Try API →</a>
-    </div>
+  <div class="nav-logo">Medi<span>Guide</span> RL</div>
+  <div class="nav-sep"></div>
+  <div class="nav-tag">Healthcare Triage Environment</div>
+  <div class="nav-right">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-txt" id="statusTxt">Connecting</span>
   </div>
 </nav>
 
-<div class="wrap">
+<div class="container">
 
-<section class="hero">
-  <div class="hero-pill"><span class="pulse"></span>OpenEnv · Meta PyTorch Hackathon 2026</div>
-  <h1 class="hero-h1">
-    <span class="t1">Real-World RL for</span>
-    <span class="t2">Healthcare Triage</span>
-  </h1>
-  <p class="hero-p">An AI agent learns to classify patient urgency from symptoms, vitals, and history — reducing critical delays and saving lives.</p>
-  <div class="hero-btns">
-    <a href="https://sayedabdulmuqsit11-medi-triage-env.hf.space/docs" class="btn-fill">
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5h9M7.5 3l3.5 3.5L7.5 10" stroke="#0a0812" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Live API Docs
-    </a>
-    <a href="https://huggingface.co/spaces/sayedabdulmuqsit11/medi-triage-env" class="btn-ghost">View on HF Spaces</a>
+  <div class="section">
+    <div class="analytics-row">
+      <div class="stat">
+        <div class="stat-label">Episodes</div>
+        <div class="stat-val c-green" id="aEp">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Avg Reward</div>
+        <div class="stat-val c-text" id="aAvg">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Missed Emergencies</div>
+        <div class="stat-val c-red" id="aMiss">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Overtriage Rate</div>
+        <div class="stat-val c-amber" id="aOver">—</div>
+      </div>
+    </div>
   </div>
-</section>
 
-<div class="stats-bar reveal">
-  <div class="stat"><span class="stat-n">3</span><span class="stat-l">Task Levels</span></div>
-  <div class="stat"><span class="stat-n">0.95</span><span class="stat-l">Peak Score</span></div>
-  <div class="stat"><span class="stat-n">9</span><span class="stat-l">Scenarios</span></div>
-  <div class="stat"><span class="stat-n">&lt;200ms</span><span class="stat-l">Avg Latency</span></div>
+  <div class="section">
+    <div class="sec-label">Task Level</div>
+    <div class="task-row">
+      <button class="task-btn active" onclick="selTask('easy',this)">Easy</button>
+      <button class="task-btn" onclick="selTask('medium',this)">Medium</button>
+      <button class="task-btn" onclick="selTask('hard',this)">Hard</button>
+      <button class="task-btn t-expert" onclick="selTask('expert',this)">Expert</button>
+      <button class="task-btn t-adv" onclick="selTask('adversarial',this)">Adversarial</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="section">
+        <div class="sec-label">Patient Observation</div>
+        <div class="card" id="patientCard">
+          <div class="empty">Click <strong style="color:var(--text)">New Patient</strong> to begin an episode</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-label">Episode History</div>
+        <div id="histContainer">
+          <div class="card"><div class="empty">No episodes yet</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-label">Log</div>
+        <div class="log-panel" id="logPanel"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section">
+        <div class="sec-label">Triage Decision</div>
+        <div class="card">
+          <div class="urgency-grid">
+            <div class="u-btn" onclick="selUrgency(0)"><div class="u-num" style="color:var(--green)">0</div><div class="u-lbl">Self-Care</div></div>
+            <div class="u-btn" onclick="selUrgency(1)"><div class="u-num" style="color:var(--amber)">1</div><div class="u-lbl">Non-Urgent</div></div>
+            <div class="u-btn" onclick="selUrgency(2)"><div class="u-num" style="color:#e09550">2</div><div class="u-lbl">Urgent</div></div>
+            <div class="u-btn" onclick="selUrgency(3)"><div class="u-num" style="color:var(--red)">3</div><div class="u-lbl">Emergency</div></div>
+          </div>
+
+          <div class="field">
+            <label>Reasoning</label>
+            <textarea id="reasoning" placeholder="Describe your clinical reasoning..."></textarea>
+          </div>
+          <div class="field">
+            <label>Recommended Action</label>
+            <input id="recommended" type="text" placeholder="e.g. Refer to emergency department"/>
+          </div>
+          <div class="field">
+            <label>Estimated Wait (minutes)</label>
+            <input id="waitTime" type="number" value="0" min="0"/>
+          </div>
+          <div class="field">
+            <label>Predicted Diagnosis <span class="opt-label">— optional · +0.3 reward</span></label>
+            <input id="diagnosis" type="text" placeholder="e.g. Acute Myocardial Infarction"/>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="resetBtn" onclick="doReset()">New Patient</button>
+            <button class="btn btn-secondary" id="stepBtn" onclick="doStep()" disabled>Submit</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="sec-label">Reward</div>
+        <div class="card" id="rewardCard">
+          <div class="empty">No result yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
-
-<section class="section" id="demo">
-  <div class="sec-tag">// live environment</div>
-  <div class="sec-h2">Interactive Triage Agent</div>
-  <div class="demo-wrap">
-    <div class="card reveal">
-      <div class="card-hd"><span class="card-tt">Agent Simulator</span><span class="live-dot"></span></div>
-      <div class="card-bd">
-        <div class="tabs">
-          <button class="tab on-easy" id="tab-easy" onclick="setTask('easy')">Easy</button>
-          <button class="tab" id="tab-med" onclick="setTask('med')">Medium</button>
-          <button class="tab" id="tab-hard" onclick="setTask('hard')">Hard</button>
-        </div>
-        <div class="pbox" id="pbox">
-          <div class="empty-s">
-            <div class="empty-ico"><svg viewBox="0 0 14 14" fill="none"><path d="M7 2v5l3 2" stroke="#3a3850" stroke-width="1.2" stroke-linecap="round"/><circle cx="7" cy="7" r="5.5" stroke="#3a3850" stroke-width="1"/></svg></div>
-            <span class="empty-lbl">Generate a patient to begin</span>
-          </div>
-        </div>
-        <button class="btn-fill" style="width:100%;justify-content:center;margin-bottom:12px;" onclick="doReset()">Generate Patient</button>
-        <div style="margin-bottom:8px;">
-          <div class="sec-tag" style="margin-bottom:8px;">// select urgency level</div>
-          <div class="u-grid">
-            <button class="u-btn u0" id="u0" onclick="pickU(0)"><span class="u-num">0</span><span class="u-lbl">Self Care</span></button>
-            <button class="u-btn u1" id="u1" onclick="pickU(1)"><span class="u-num">1</span><span class="u-lbl">Non Urgent</span></button>
-            <button class="u-btn u2" id="u2" onclick="pickU(2)"><span class="u-num">2</span><span class="u-lbl">Urgent</span></button>
-            <button class="u-btn u3" id="u3" onclick="pickU(3)"><span class="u-num">3</span><span class="u-lbl">Emergency</span></button>
-          </div>
-        </div>
-        <button class="btn-ghost" style="width:100%;justify-content:center;font-size:12px;" onclick="doStep()">Submit Triage Decision</button>
-        <div class="result-panel" id="rpanel"><span style="color:var(--txt3);">awaiting decision...</span></div>
-      </div>
-    </div>
-    <div class="right-col">
-      <div class="card reveal">
-        <div class="card-hd"><span class="card-tt">Grader Scores</span><span style="font-family:var(--mono);font-size:9px;color:var(--txt3);">0.0 — 1.0</span></div>
-        <div class="card-bd">
-          <div class="score-row" style="margin-bottom:16px;">
-            <div class="sc e"><div class="sc-l">Easy</div><div class="sc-v">0.90</div></div>
-            <div class="sc m"><div class="sc-l">Medium</div><div class="sc-v">0.60</div></div>
-            <div class="sc h"><div class="sc-l">Hard</div><div class="sc-v">0.95</div></div>
-          </div>
-          <div class="rbar-list">
-            <div class="rbar-row"><span class="rbar-lbl">Correct</span><div class="rbar-track"><div class="rbar-fill" style="background:var(--emerald)" data-w="100"></div></div><span class="rbar-val" style="color:var(--emerald);">+1.0</span></div>
-            <div class="rbar-row"><span class="rbar-lbl">Off by 1</span><div class="rbar-track"><div class="rbar-fill" style="background:var(--amber)" data-w="50"></div></div><span class="rbar-val" style="color:var(--amber);">+0.5</span></div>
-            <div class="rbar-row"><span class="rbar-lbl">Over-triaged</span><div class="rbar-track"><div class="rbar-fill" style="background:var(--accent)" data-w="30"></div></div><span class="rbar-val" style="color:var(--accent);">-0.3</span></div>
-            <div class="rbar-row"><span class="rbar-lbl">Missed critical</span><div class="rbar-track"><div class="rbar-fill" style="background:var(--rose)" data-w="100"></div></div><span class="rbar-val" style="color:var(--rose);">-1.0</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="card reveal">
-        <div class="card-hd"><span class="card-tt">Session Stats</span></div>
-        <div class="card-bd">
-          <div class="sess-row">
-            <div class="sess-item"><span class="sess-l">Episodes</span><span class="sess-v" id="epCount" style="color:var(--accent);">0</span></div>
-            <div class="sess-item"><span class="sess-l">Avg Reward</span><span class="sess-v" id="avgRew" style="color:var(--emerald);">—</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<section class="section" id="api">
-  <div class="sec-tag">// api reference</div>
-  <div class="sec-h2">Environment Endpoints</div>
-  <div class="ep-list reveal">
-    <a href="https://sayedabdulmuqsit11-medi-triage-env.hf.space" class="ep"><span class="badge get">GET</span><span class="ep-path">/</span><span class="ep-desc">Health check — returns 200</span></a>
-    <a href="https://sayedabdulmuqsit11-medi-triage-env.hf.space/docs" class="ep"><span class="badge post">POST</span><span class="ep-path">/reset/{task_level}</span><span class="ep-desc">Start episode — returns PatientObservation</span></a>
-    <a href="https://sayedabdulmuqsit11-medi-triage-env.hf.space/docs" class="ep"><span class="badge post">POST</span><span class="ep-path">/step/{task_level}</span><span class="ep-desc">Submit TriageAction — returns StepResult + reward</span></a>
-    <a href="https://sayedabdulmuqsit11-medi-triage-env.hf.space/docs" class="ep"><span class="badge get">GET</span><span class="ep-path">/state/{task_level}</span><span class="ep-desc">Current environment state</span></a>
-    <a href="https://sayedabdulmuqsit11-medi-triage-env.hf.space/docs" class="ep"><span class="badge get">GET</span><span class="ep-path">/docs</span><span class="ep-desc">Interactive Swagger UI</span></a>
-  </div>
-</section>
-
-<div class="divider"></div>
-
-<section class="section" id="arch">
-  <div class="sec-tag">// system design</div>
-  <div class="sec-h2">Environment Architecture</div>
-  <div class="card reveal">
-    <div class="card-bd" style="padding:24px;">
-      <div class="arch">
-        <div class="arch-n"><div class="arch-ico"><svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="#a78bfa" stroke-width="1"/><path d="M2 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="#a78bfa" stroke-width="1" stroke-linecap="round"/></svg></div><span class="arch-lbl">RL Agent</span><span class="arch-sub">LLM / Policy</span></div>
-        <div class="arch-n hl"><div class="arch-ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="1.5" stroke="#a78bfa" stroke-width="1"/><path d="M5 7h4M5 9h2" stroke="#a78bfa" stroke-width="1" stroke-linecap="round"/></svg></div><span class="arch-lbl">FastAPI</span><span class="arch-sub">step() reset()</span></div>
-        <div class="arch-n"><div class="arch-ico"><svg viewBox="0 0 14 14" fill="none"><path d="M7 2L2 5v4l5 3 5-3V5L7 2z" stroke="#a78bfa" stroke-width="1" stroke-linejoin="round"/><path d="M7 2v10M2 5l5 3 5-3" stroke="#a78bfa" stroke-width="1" stroke-linejoin="round"/></svg></div><span class="arch-lbl">Triage Env</span><span class="arch-sub">env.py</span></div>
-        <div class="arch-n"><div class="arch-ico"><svg viewBox="0 0 14 14" fill="none"><path d="M2 10L5 7l2.5 2.5L10 5l2 2" stroke="#a78bfa" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="2" width="10" height="10" rx="1.5" stroke="#a78bfa" stroke-width="1"/></svg></div><span class="arch-lbl">Grader</span><span class="arch-sub">0.0 — 1.0</span></div>
-        <div class="arch-n"><div class="arch-ico"><svg viewBox="0 0 14 14" fill="none"><rect x="2" y="4" width="10" height="7" rx="1.5" stroke="#a78bfa" stroke-width="1"/><path d="M5 4V3a2 2 0 014 0v1" stroke="#a78bfa" stroke-width="1" stroke-linecap="round"/></svg></div><span class="arch-lbl">Docker</span><span class="arch-sub">HF Spaces</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-</div>
-
-<footer>
-  <div class="wrap">
-    <div class="foot-inner">
-      <div class="foot-left">
-        <span class="foot-logo">Medi<em>Guide</em> RL</span>
-        <span class="foot-sep">·</span>
-        <span class="foot-desc">Built with OpenEnv</span>
-      </div>
-      <div class="foot-right">
-        <span class="foot-tag">OpenEnv</span>
-        <span class="foot-tag">FastAPI</span>
-        <span class="foot-tag">PyTorch</span>
-        <span class="foot-tag">Docker</span>
-        <span class="foot-tag">MIT</span>
-      </div>
-    </div>
-  </div>
-</footer>
 
 <script>
-const S={
-  easy:[
-    {id:'P1042',age:25,symptoms:['mild fever'],dur:12,chronic:false,visits:2},
-    {id:'P2891',age:30,symptoms:['runny nose','sneezing'],dur:24,chronic:false,visits:0},
-    {id:'P3310',age:22,symptoms:['mild headache'],dur:6,chronic:false,visits:1},
-  ],
-  med:[
-    {id:'P4421',age:45,symptoms:['high fever','body ache','fatigue'],dur:48,chronic:false,visits:3},
-    {id:'P5532',age:60,symptoms:['fever','cough','breathlessness'],dur:36,chronic:true,visits:7},
-    {id:'P6643',age:50,symptoms:['chest tightness','sweating'],dur:2,chronic:true,visits:12},
-  ],
-  hard:[
-    {id:'P7754',age:35,symptoms:['severe chest pain','left arm pain','nausea'],dur:1,chronic:false,visits:0},
-    {id:'P8865',age:70,symptoms:['sudden confusion','facial drooping','slurred speech'],dur:1,chronic:true,visits:15},
-    {id:'P9976',age:28,symptoms:['severe abdominal pain','vomiting blood'],dur:3,chronic:false,visits:1},
-  ]
-};
-let task='easy',selU=null,patient=null,eps=0,totalR=0;
-function setTask(t){
-  task=t;patient=null;selU=null;
-  ['easy','med','hard'].forEach(k=>{document.getElementById('tab-'+k).className='tab'+(k===t?' on-'+t:'');});
-  document.getElementById('pbox').innerHTML='<div class="empty-s"><div class="empty-ico"><svg viewBox="0 0 14 14" fill="none"><path d="M7 2v5l3 2" stroke="#3a3850" stroke-width="1.2" stroke-linecap="round"/><circle cx="7" cy="7" r="5.5" stroke="#3a3850" stroke-width="1"/></svg></div><span class="empty-lbl">Generate a patient to begin</span></div>';
-  const rp=document.getElementById('rpanel');rp.className='result-panel';rp.innerHTML='<span style="color:var(--txt3);">awaiting decision...</span>';
-  document.querySelectorAll('.u-btn').forEach(b=>b.classList.remove('sel'));
+const BASE = window.location.origin;
+let task = 'easy', urgency = null, hist = [];
+const UL = ['Self-Care','Non-Urgent','Urgent','Emergency'];
+const UC = ['var(--green)','var(--amber)','#e09550','var(--red)'];
+const UB = ['rgba(63,185,80,.15)','rgba(227,179,65,.15)','rgba(224,149,80,.15)','rgba(248,81,73,.15)'];
+
+function log(msg, cls='') {
+  const p = document.getElementById('logPanel');
+  const t = new Date().toLocaleTimeString('en-IN',{hour12:false});
+  p.innerHTML += `<div class="le"><span class="lt">${t}</span><span class="${cls}">${msg}</span></div>`;
+  p.scrollTop = p.scrollHeight;
 }
-function doReset(){
-  const pool=S[task];patient=pool[Math.floor(Math.random()*pool.length)];selU=null;
-  document.querySelectorAll('.u-btn').forEach(b=>b.classList.remove('sel'));
-  const rp=document.getElementById('rpanel');rp.className='result-panel';rp.innerHTML='<span style="color:var(--txt3);">patient loaded — select urgency and submit</span>';
-  const syms=patient.symptoms.map(s=>`<span class="sym-tag">${s}</span>`).join('');
-  document.getElementById('pbox').innerHTML=`<div class="pid">PATIENT ${patient.id} &nbsp;·&nbsp; ${task.toUpperCase()} TASK</div><div class="p-grid"><div class="p-field"><span>Age</span><strong>${patient.age} yrs</strong></div><div class="p-field"><span>Duration</span><strong>${patient.dur}h</strong></div><div class="p-field"><span>Chronic</span><strong style="color:${patient.chronic?'var(--amber)':'var(--txt2)'}">${patient.chronic?'Yes':'No'}</strong></div><div class="p-field"><span>Past Visits</span><strong>${patient.visits}</strong></div><div class="p-field sym-row"><span>Symptoms</span><div class="sym-list">${syms}</div></div></div>`;
+
+function setStatus(ok) {
+  document.getElementById('statusDot').className = 'status-dot' + (ok ? '' : ' offline');
+  document.getElementById('statusTxt').textContent = ok ? 'Online' : 'Offline';
 }
-function pickU(u){selU=u;document.querySelectorAll('.u-btn').forEach(b=>b.classList.remove('sel'));document.getElementById('u'+u).classList.add('sel');}
-function trueU(p){
-  const s=p.symptoms.join(' ').toLowerCase();
-  if(/chest pain|heart|stroke|facial|slurred|vomiting blood/.test(s))return 3;
-  if(/chest tightness|breathlessness|high fever|severe/.test(s))return 2;
-  if(p.chronic&&p.dur>24)return 2;
-  if(p.dur>36)return 1;
-  return 0;
+
+function selTask(t2, el) {
+  document.querySelectorAll('.task-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  task = t2;
+  log(`Task: ${t2}`, 'lb');
 }
-function rew(pred,truth){if(pred===truth)return 1.0;if(Math.abs(pred-truth)===1)return 0.5;if(pred<truth)return -1.0;return -0.3;}
-function doStep(){
-  const rp=document.getElementById('rpanel');
-  if(!patient){rp.className='result-panel part';rp.innerHTML='<div class="r-row"><span style="color:var(--amber);font-size:11px;">Generate a patient first</span></div>';return;}
-  if(selU===null){rp.className='result-panel part';rp.innerHTML='<div class="r-row"><span style="color:var(--amber);font-size:11px;">Select an urgency level first</span></div>';return;}
-  const tu=trueU(patient),r=rew(selU,tu);
-  eps++;totalR+=r;
-  document.getElementById('epCount').textContent=eps;
-  document.getElementById('avgRew').textContent=(totalR/eps).toFixed(2);
-  const L=['Self-Care','Non-Urgent','Urgent','Emergency'],C=['cg','cv','ca','cr'];
-  const cls=r===1.0?'win':r<0?'loss':'part';
-  const rc=r>0?'var(--emerald)':r<-0.5?'var(--rose)':'var(--amber)';
-  const rs=r>0?'+':'';
-  const msg=r===1.0?'Correct triage — full reward':r===0.5?'Off by one level — partial credit':r===-0.3?'Over-triaged — wasteful but safe':'CRITICAL: Under-triaged — patient at risk';
-  rp.className='result-panel '+cls;
-  rp.innerHTML=`<div class="r-row" style="margin-bottom:6px;"><span style="font-size:9px;color:var(--txt3);letter-spacing:1px;">PREDICTED</span><span class="r-chip ${C[selU]}">${L[selU]}</span><span style="font-size:9px;color:var(--txt3);letter-spacing:1px;margin-left:4px;">ACTUAL</span><span class="r-chip ${C[tu]}">${L[tu]}</span></div><div class="r-row"><span style="font-size:9px;color:var(--txt3);letter-spacing:1px;">REWARD</span><span class="r-reward" style="color:${rc};font-family:var(--mono);">${rs}${r.toFixed(1)}</span></div><div class="r-msg">${msg}</div>`;
-  patient=null;
+
+function selUrgency(level) {
+  urgency = level;
+  document.querySelectorAll('.u-btn').forEach((b, i) => {
+    b.className = 'u-btn' + (i === level ? ` sel-${level}` : '');
+  });
 }
-const ro=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('in');ro.unobserve(x.target);}});},{threshold:0.1});
-document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
-setTimeout(()=>{document.querySelectorAll('.rbar-fill').forEach(b=>{b.style.width=b.dataset.w+'%';});},600);
+
+async function doReset() {
+  document.getElementById('resetBtn').disabled = true;
+  log(`Resetting — task: ${task}`, 'lb');
+  try {
+    const r = await fetch(`${BASE}/reset`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({task})
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const obs = await r.json();
+    renderPatient(obs);
+    document.getElementById('stepBtn').disabled = false;
+    document.getElementById('rewardCard').innerHTML = '<div class="empty">No result yet</div>';
+    log(`Patient ${obs.patient_id} loaded`, 'lg');
+    setStatus(true);
+    fetchAnalytics();
+  } catch(e) { log(`Reset failed: ${e.message}`, 'lr'); setStatus(false); }
+  document.getElementById('resetBtn').disabled = false;
+}
+
+async function doStep() {
+  if (urgency === null) { log('Select urgency level', 'la'); return; }
+  const reasoning = document.getElementById('reasoning').value.trim();
+  if (!reasoning) { log('Reasoning is required', 'la'); return; }
+  document.getElementById('stepBtn').disabled = true;
+  const payload = {
+    urgency_level: urgency,
+    reasoning,
+    recommended_action: document.getElementById('recommended').value || 'Refer to doctor',
+    estimated_wait_minutes: parseInt(document.getElementById('waitTime').value)||0,
+    predicted_diagnosis: document.getElementById('diagnosis').value || null,
+  };
+  try {
+    const r = await fetch(`${BASE}/step`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const result = await r.json();
+    renderReward(result, payload);
+    addHist(result);
+    fetchAnalytics();
+    const rw = result.reward;
+    log(`Reward: ${rw>0?'+':''}${rw} · correct: ${UL[result.info?.correct_urgency]}`, rw>0?'lg':'lr');
+  } catch(e) {
+    log(`Step failed: ${e.message}`, 'lr');
+    document.getElementById('stepBtn').disabled = false;
+  }
+}
+
+function vClass(key, val) {
+  const m = {
+    heart_rate:{w:100,c:120},
+    oxygen_saturation:{w:95,c:92,low:true},
+    temperature:{w:38.5,c:39.5},
+    systolic_bp:{w:140,c:180},
+    respiratory_rate:{w:20,c:28},
+  };
+  const t = m[key]; if (!t) return '';
+  if (t.low) return val<t.c?'crit':val<t.w?'warn':'';
+  if (key==='systolic_bp'&&val<90) return 'crit';
+  return val>=t.c?'crit':val>=t.w?'warn':'';
+}
+
+function renderPatient(obs) {
+  const v = obs.vitals||{};
+  const alertKw = ['chest pain','shortness of breath','confusion','slurred speech','coughing blood','loss of consciousness'];
+  const vitalsData = [
+    {key:'heart_rate',        label:'Heart Rate',  val:v.heart_rate,        unit:'BPM'},
+    {key:'oxygen_saturation', label:'SpO₂',        val:v.oxygen_saturation, unit:'%'},
+    {key:'temperature',       label:'Temp',        val:v.temperature,       unit:'°C'},
+    {key:'systolic_bp',       label:'Systolic BP', val:v.systolic_bp,       unit:'mmHg'},
+    {key:'diastolic_bp',      label:'Diastolic BP',val:v.diastolic_bp,      unit:'mmHg'},
+    {key:'respiratory_rate',  label:'Resp Rate',   val:v.respiratory_rate,  unit:'br/min'},
+  ];
+
+  const vitalsHtml = vitalsData.map(({key,label,val,unit}) => {
+    const c = vClass(key,val);
+    return `<div class="vit ${c}"><div class="vit-name">${label}</div><div class="vit-val ${c}">${val??'—'}</div><div class="vit-unit">${unit}</div></div>`;
+  }).join('');
+
+  const sympHtml = (obs.symptoms||[]).map(s =>
+    `<span class="chip${alertKw.some(k=>s.toLowerCase().includes(k))?' alert':''}">${s}</span>`
+  ).join('');
+
+  const chrHtml = obs.chronic_conditions?.length
+    ? obs.chronic_conditions.map(c=>`<span class="chip">${c}</span>`).join('')
+    : '<span style="color:var(--text3);font-size:12px;">None</span>';
+
+  const visHtml = obs.visit_history?.length
+    ? obs.visit_history.map(vv =>
+        `<div class="visit-row">
+          <span style="color:${UC[vv.urgency_assigned]}">${UL[vv.urgency_assigned]}</span>
+          <span style="color:var(--text3)">reward ${vv.reward?.toFixed(2)}</span>
+          <span>${(vv.symptoms||[]).slice(0,2).join(', ')}</span>
+        </div>`).join('')
+    : '<div style="color:var(--text3);font-size:11px;font-family:\'JetBrains Mono\',monospace;">No prior visits this session</div>';
+
+  document.getElementById('patientCard').innerHTML = `
+    <div class="patient-header">
+      <div>
+        <div class="p-id">${obs.patient_id}</div>
+        <div class="p-sub">Age ${obs.age} &nbsp;·&nbsp; Pain ${obs.pain_scale}/10 &nbsp;·&nbsp; ${obs.symptom_duration_hours}h duration</div>
+      </div>
+      <div class="task-pill">${task}</div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="field-label">Symptoms</div>
+        <div class="chip-row">${sympHtml}</div>
+        <div style="margin-top:16px;">
+          <div class="field-label">Chronic Conditions</div>
+          <div class="chip-row">${chrHtml}</div>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="field-label">Visit History</div>
+          ${visHtml}
+        </div>
+        <div class="ctx-row">
+          <span class="ctx-pill">${obs.time_of_day}</span>
+          <span class="ctx-pill">${obs.season}</span>
+          <span class="ctx-pill">${obs.past_visits_30_days} visit${obs.past_visits_30_days!==1?'s':''}/30d</span>
+        </div>
+      </div>
+      <div>
+        <div class="field-label">Vital Signs</div>
+        <div class="vitals-grid">${vitalsHtml}</div>
+      </div>
+    </div>`;
+}
+
+function renderReward(result, payload) {
+  const rw = result.reward;
+  const correct = result.info?.correct_urgency;
+  const predicted = result.info?.predicted_urgency;
+  const diff = Math.abs(correct-predicted);
+  const dt = result.info?.decision_time_seconds||0;
+
+  const sigs = [];
+  sigs.push({name:'Accuracy', val: diff===0?1.0:diff===1?0.4:-0.3*diff});
+  if (correct===3&&predicted===3&&dt<30) sigs.push({name:'Speed bonus', val:0.2});
+  if (diff===0) sigs.push({name:'Chronic awareness', val:0.1});
+  if (payload.predicted_diagnosis&&diff===0) sigs.push({name:'Diagnosis prediction', val:0.3});
+  if (predicted-correct>=2) sigs.push({name:'Overtriage penalty', val:-0.2});
+  if (correct===3&&predicted<2) sigs.push({name:'Missed emergency', val:-0.5});
+
+  const maxAbs = Math.max(...sigs.map(s=>Math.abs(s.val)),0.01);
+  const sigsHtml = sigs.map(s => {
+    const pos = s.val>=0;
+    const pct = Math.round(Math.abs(s.val)/maxAbs*100);
+    return `<div class="sig-row">
+      <div class="sig-name">${s.name}</div>
+      <div class="sig-bar"><div class="sig-fill ${pos?'pos':'neg'}" style="width:${pct}%"></div></div>
+      <div class="sig-val ${pos?'pos':'neg'}">${pos?'+':''}${s.val.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+
+  const rwColor = rw>0?'var(--green)':rw<0?'var(--red)':'var(--text2)';
+  document.getElementById('rewardCard').innerHTML = `
+    <div class="rw-header">
+      <div>
+        <div class="rw-total" style="color:${rwColor}">${rw>0?'+':''}${rw}</div>
+        <div class="rw-meta">
+          Correct: <span style="color:${UC[correct]}">${UL[correct]}</span>
+          &nbsp;·&nbsp; Predicted: <span style="color:${UC[predicted]}">${UL[predicted]}</span>
+        </div>
+      </div>
+      <div class="rw-dt">${dt}s<br>decision</div>
+    </div>
+    ${sigsHtml}`;
+}
+
+function addHist(result) {
+  hist.unshift({...result, taskName: task});
+  if (hist.length>8) hist.pop();
+  document.getElementById('histContainer').innerHTML = hist.map(r => {
+    const c=r.info?.correct_urgency, p=r.info?.predicted_urgency, rw=r.reward;
+    return `<div class="hist-row">
+      <div class="h-badge" style="background:${UB[p]};color:${UC[p]}">${p}</div>
+      <div class="h-info">${r.taskName} · predicted ${UL[p]} · correct ${UL[c]}</div>
+      <div class="h-rw" style="color:${rw>0?'var(--green)':'var(--red)'}">${rw>0?'+':''}${rw}</div>
+    </div>`;
+  }).join('');
+}
+
+async function fetchAnalytics() {
+  try {
+    const r = await fetch(`${BASE}/analytics`);
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('aEp').textContent  = d.total_episodes??'—';
+    const avg = d.avg_reward;
+    const el = document.getElementById('aAvg');
+    el.textContent = avg!=null?(avg>0?'+':'')+avg.toFixed(3):'—';
+    el.className = 'stat-val '+(avg>0?'c-green':avg<0?'c-red':'c-text');
+    document.getElementById('aMiss').textContent = d.missed_emergencies_rate!=null?(d.missed_emergencies_rate*100).toFixed(1)+'%':'—';
+    document.getElementById('aOver').textContent = d.overtriage_rate!=null?(d.overtriage_rate*100).toFixed(1)+'%':'—';
+  } catch(_) {}
+}
+
+(async () => {
+  log('MediGuide RL initialized');
+  try {
+    const r = await fetch(`${BASE}/state`);
+    if (r.ok) { setStatus(true); log('API connected', 'lg'); fetchAnalytics(); }
+    else { setStatus(false); log('API unavailable', 'lr'); }
+  } catch(_) { setStatus(false); log('API unavailable', 'lr'); }
+})();
 </script>
 </body>
 </html>
