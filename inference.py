@@ -17,23 +17,15 @@ TASKS = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
 
-def get_llm_base_url():
-    url = os.environ["API_BASE_URL"]
-    if not url.endswith("/v1"):
-        url = url.rstrip("/") + "/v1"
-    return url
-
 
 def call_llm(prompt: str) -> str:
-    """Call the LLM to make a triage decision."""
-    from openai import OpenAI
-    client = OpenAI(
-        base_url=get_llm_base_url(),
-        api_key=os.environ["API_KEY"]
-    )
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.environ.get('API_KEY', '')}",
+    }
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
             {
                 "role": "system",
                 "content": (
@@ -53,10 +45,15 @@ def call_llm(prompt: str) -> str:
             },
             {"role": "user", "content": prompt},
         ],
-        max_tokens=300,
-        temperature=0.1,
-    )
-    return response.choices[0].message.content.strip()
+        "max_tokens": 300,
+        "temperature": 0.1,
+    }
+    base = os.environ.get("API_BASE_URL", "").rstrip("/")
+    if not base.endswith("/v1"):
+        base = base + "/v1"
+    r = requests.post(f"{base}/chat/completions", headers=headers, json=payload, timeout=60)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
 
 
 def build_prompt(obs: dict) -> str:
