@@ -21,7 +21,7 @@ def call_llm(prompt: str) -> str:
     """Call the LLM to make a triage decision."""
     from openai import OpenAI
     client = OpenAI(
-        base_url=os.environ.get("API_BASE_URL", "https://sayedabdulmuqsit11-medi-triage-env.hf.space"),
+        base_url=os.environ.get("API_BASE_URL", "https://api.openai.com/v1"),
         api_key=os.environ.get("API_KEY", os.environ.get("OPENAI_API_KEY", "dummy"))
     )
     response = client.chat.completions.create(
