@@ -20,10 +20,10 @@ EPISODES_PER_TASK = 3
 def call_llm(prompt: str) -> str:
     """Call the LLM to make a triage decision."""
     from openai import OpenAI
-   client = OpenAI(
-    base_url=os.environ["API_BASE_URL"],
-    api_key=os.environ["API_KEY"]
-)
+    client = OpenAI(
+        base_url=os.environ["API_BASE_URL"],
+        api_key=os.environ["API_KEY"]
+    )
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
