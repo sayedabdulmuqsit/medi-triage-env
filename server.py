@@ -91,7 +91,9 @@ async def root():
 
 
 @app.post("/reset", response_model=PatientObservation)
-async def reset(request: ResetRequest):
+async def reset(request: ResetRequest = None):
+    if request is None:
+        request = ResetRequest()
     valid_tasks = ["easy", "medium", "hard", "expert", "adversarial"]
     if request.task not in valid_tasks:
         raise HTTPException(
