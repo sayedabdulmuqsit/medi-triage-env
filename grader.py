@@ -1,11 +1,11 @@
-from models import UrgencyLevel, TriageAction, PatientObservation
+from models import UrgencyLevel
 
 
-def _clamp(score: float) -> float:
-    return max(0.01, min(0.99, round(score, 4)))
+def _clamp(score):
+    return max(0.01, min(0.99, round(float(score), 4)))
 
 
-def grade(observation, action, correct_urgency, task="easy") -> float:
+def grade(observation, action, correct_urgency, task="easy"):
     predicted = action.urgency_level
     correct = correct_urgency
     diff = abs(int(correct) - int(predicted))
@@ -17,8 +17,7 @@ def grade(observation, action, correct_urgency, task="easy") -> float:
         if correct == UrgencyLevel.EMERGENCY and predicted < UrgencyLevel.URGENT:
             return _clamp(0.05)
         base = 0.75 if diff == 0 else 0.40 if diff == 1 else 0.05
-        reasoning_lower = action.reasoning.lower()
-        bonus = min(0.10, sum(0.03 for s in observation.symptoms if s.lower() in reasoning_lower))
+        bonus = min(0.10, sum(0.03 for s in observation.symptoms if s.lower() in action.reasoning.lower()))
         return _clamp(base + bonus)
 
     elif task == "hard":
