@@ -429,7 +429,7 @@ class MediGuideEnv:
         if correct == UrgencyLevel.EMERGENCY and predicted < UrgencyLevel.URGENT:
             reward -= 0.5
 
-        return max(-1.0, min(1.6, reward))
+       return max(0.01, min(0.99, reward))
 
     # ── SQLite helpers ────────────────────────────────────────────────────────
 
