@@ -9,7 +9,6 @@ from models import (
     UrgencyLevel, VitalSigns
 )
 
-import os
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mediguide_sessions.db")
 
 
@@ -32,8 +31,6 @@ def _init_db():
 
 _init_db()
 
-
-# ── Vital sign generators per urgency level ──────────────────────────────────
 
 def _vitals_for_urgency(urgency: int) -> VitalSigns:
     if urgency == UrgencyLevel.EMERGENCY:
@@ -63,7 +60,7 @@ def _vitals_for_urgency(urgency: int) -> VitalSigns:
             temperature=round(random.uniform(37.3, 38.4), 1),
             respiratory_rate=random.randint(16, 20)
         )
-    else:  # SELF_CARE
+    else:
         return VitalSigns(
             heart_rate=random.randint(60, 75),
             systolic_bp=random.randint(100, 120),
@@ -73,8 +70,6 @@ def _vitals_for_urgency(urgency: int) -> VitalSigns:
             respiratory_rate=random.randint(12, 16)
         )
 
-
-# ── Scenario bank ─────────────────────────────────────────────────────────────
 
 def _get_time_and_season():
     hour = random.randint(0, 23)
@@ -101,25 +96,24 @@ def _get_time_and_season():
 
 
 def _season_symptoms(season: str, tod: str):
-    """Return extra contextual symptoms based on season/time."""
     extras = []
     if season == "monsoon":
         extras = random.choice([
-            ["high fever", "joint pain"],        # dengue
-            ["chills", "sweating"],               # malaria
-            ["watery diarrhea", "nausea"],        # cholera risk
+            ["high fever", "joint pain"],
+            ["chills", "sweating"],
+            ["watery diarrhea", "nausea"],
             []
         ])
     elif season == "summer":
         extras = random.choice([
-            ["dizziness", "excessive thirst"],    # heat stroke risk
+            ["dizziness", "excessive thirst"],
             ["sunburn", "headache"],
             []
         ])
     elif season == "winter":
         extras = random.choice([
             ["runny nose", "sore throat"],
-            ["chest tightness", "wheezing"],      # asthma flare
+            ["chest tightness", "wheezing"],
             []
         ])
     if tod == "night":
@@ -282,7 +276,6 @@ class MediGuideEnv:
 
         vitals = _vitals_for_urgency(base["correct_urgency"])
 
-        # Adversarial: override vitals to contradict symptoms
         if base.get("adversarial_note"):
             vitals = VitalSigns(
                 heart_rate=random.randint(120, 145),
@@ -293,10 +286,9 @@ class MediGuideEnv:
                 respiratory_rate=random.randint(28, 36)
             )
 
-        # Fetch visit history from DB
         visit_history = self._get_visit_history(base["patient_id"])
-
         self.current_scenario = base
+
         obs = PatientObservation(
             patient_id=base["patient_id"],
             age=base["age"],
@@ -327,23 +319,16 @@ class MediGuideEnv:
         self.total_reward += reward
         self.step_count += 1
 
-        # Track errors
         if correct == UrgencyLevel.EMERGENCY and predicted < UrgencyLevel.EMERGENCY:
             self.missed_emergencies += 1
         if predicted > correct + 1:
             self.overtriage_count += 1
 
-        # Save to DB
         self._save_visit(
             patient_id=self.current_scenario["patient_id"],
             urgency=int(predicted),
             reward=reward
         )
-
-        done = True
-        next_obs = None
-        if not done:
-            next_obs = self.reset(self.current_task)
 
         return StepResult(
             observation=PatientObservation(
@@ -360,7 +345,7 @@ class MediGuideEnv:
                 season=self.current_scenario.get("season", "summer"),
             ),
             reward=round(reward, 4),
-            done=done,
+            done=True,
             info={
                 "correct_urgency": int(correct),
                 "predicted_urgency": int(predicted),
@@ -369,7 +354,7 @@ class MediGuideEnv:
                 "episode": self.episode_count,
                 "step": self.step_count,
             },
-            next_patient=next_obs,
+            next_patient=None,
         )
 
     def state(self) -> dict:
@@ -378,9 +363,7 @@ class MediGuideEnv:
             "step": self.step_count,
             "task": self.current_task,
             "total_reward": round(self.total_reward, 4),
-            "avg_reward": round(
-                self.total_reward / max(self.episode_count, 1), 4
-            ),
+            "avg_reward": round(self.total_reward / max(self.episode_count, 1), 4),
             "missed_emergencies": self.missed_emergencies,
             "overtriage_count": self.overtriage_count,
             "avg_decision_time": round(
@@ -389,49 +372,33 @@ class MediGuideEnv:
             "session_id": self.session_id,
         }
 
-    # ── Shaped reward ─────────────────────────────────────────────────────────
-
-    def _shaped_reward(
-        self,
-        correct: UrgencyLevel,
-        predicted: UrgencyLevel,
-        decision_time: float,
-        action: TriageAction,
-    ) -> float:
+    def _shaped_reward(self, correct, predicted, decision_time, action) -> float:
         diff = abs(int(correct) - int(predicted))
 
-        # Base accuracy reward
         if diff == 0:
-            reward = 1.0
+            reward = 0.80
         elif diff == 1:
-            reward = 0.4
+            reward = 0.40
         else:
-            reward = -0.3 * diff
+            reward = 0.05
 
-        # Speed bonus for emergencies decided fast (under 30s)
         if correct == UrgencyLevel.EMERGENCY and predicted == UrgencyLevel.EMERGENCY:
             if decision_time < 30:
-                reward += 0.2
+                reward = min(0.99, reward + 0.10)
 
-        # Chronic condition awareness bonus
         if self.current_scenario.get("chronic_conditions") and diff == 0:
-            reward += 0.1
+            reward = min(0.99, reward + 0.05)
 
-        # Diagnosis prediction bonus
         if action.predicted_diagnosis and diff == 0:
-            reward += 0.3
+            reward = min(0.99, reward + 0.10)
 
-        # Resource efficiency: penalize massive overtriage
         if int(predicted) - int(correct) >= 2:
-            reward -= 0.2
+            reward = max(0.01, reward - 0.10)
 
-        # Missed emergency penalty (heavy)
         if correct == UrgencyLevel.EMERGENCY and predicted < UrgencyLevel.URGENT:
-            reward -= 0.5
+            reward = 0.01
 
-       return max(0.01, min(0.99, reward))
-
-    # ── SQLite helpers ────────────────────────────────────────────────────────
+        return max(0.01, min(0.99, reward))
 
     def _save_visit(self, patient_id: str, urgency: int, reward: float):
         try:
@@ -485,11 +452,6 @@ class MediGuideEnv:
             c.execute("SELECT AVG(reward) FROM visits WHERE session_id=?", (self.session_id,))
             avg_r = c.fetchone()[0] or 0.0
             c.execute(
-                "SELECT COUNT(*) FROM visits WHERE session_id=? AND urgency_assigned < 3",
-                (self.session_id,),
-            )
-            missed_e = self.missed_emergencies
-            c.execute(
                 "SELECT symptoms, COUNT(*) as cnt FROM visits WHERE session_id=? "
                 "GROUP BY symptoms ORDER BY cnt DESC LIMIT 5",
                 (self.session_id,),
@@ -499,12 +461,8 @@ class MediGuideEnv:
             return {
                 "total_episodes": total,
                 "avg_reward": round(avg_r, 4),
-                "missed_emergencies_rate": round(
-                    missed_e / max(total, 1), 4
-                ),
-                "overtriage_rate": round(
-                    self.overtriage_count / max(total, 1), 4
-                ),
+                "missed_emergencies_rate": round(self.missed_emergencies / max(total, 1), 4),
+                "overtriage_rate": round(self.overtriage_count / max(total, 1), 4),
                 "disease_distribution": dist,
                 "avg_decision_time_seconds": round(
                     sum(self.decision_times) / max(len(self.decision_times), 1), 2
