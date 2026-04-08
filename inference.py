@@ -65,7 +65,7 @@ def run_episode(task: str, episode_num: int) -> dict:
     except Exception as e:
         print(f"[STEP] reset_error | {str(e)[:100]}")
         print(f"[END] task={task} episode={episode_num} reward=0")
-        return {"task": task, "episode": episode_num, "reward": 0, "score": 0}
+        return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
     print(f"[STEP] reset | patient={obs.get('patient_id')} | task={task}")
 
@@ -97,11 +97,10 @@ def run_episode(task: str, episode_num: int) -> dict:
         print(f"[END] task={task} episode={episode_num} reward=0")
         return {"task": task, "episode": episode_num, "reward": 0, "score": 0}
 
-    reward = result.get("reward", 0)
-    correct = result.get("info", {}).get("correct_urgency")
-    print(f"[STEP] result | reward={reward} | correct_urgency={correct} | predicted={decision.get('urgency_level')}")
-    print(f"[END] task={task} episode={episode_num} reward={reward}")
-    return {"task": task, "episode": episode_num, "reward": reward, "score": reward}
+    reward = max(0.01, min(0.99, result.get("reward", 0.01)))
+print(f"[STEP] result | reward={reward} | correct_urgency={correct} | predicted={decision.get('urgency_level')}")
+print(f"[END] task={task} episode={episode_num} reward={reward}")
+return {"task": task, "episode": episode_num, "reward": reward, "score": reward}
 
 
 def main():
@@ -125,7 +124,7 @@ def main():
     except Exception:
         pass
 
-    overall = round(sum(x["score"] for x in results) / max(len(results), 1), 3)
+    overall = round(max(0.01, min(0.99, sum(x["score"] for x in results) / max(len(results), 1))), 3)
     print(f"[END] all_tasks_complete | overall_avg_score={overall} | episodes={len(results)}")
 
 
