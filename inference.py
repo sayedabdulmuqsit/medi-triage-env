@@ -16,11 +16,18 @@ TASKS = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
 
+def get_llm_base_url():
+    url = os.environ["API_BASE_URL"]
+    if not url.endswith("/v1"):
+        url = url.rstrip("/") + "/v1"
+    return url
+
+
 def call_llm(prompt: str) -> str:
     """Call the LLM to make a triage decision."""
     from openai import OpenAI
     client = OpenAI(
-        base_url=os.environ["API_BASE_URL"],
+        base_url=get_llm_base_url(),
         api_key=os.environ["API_KEY"]
     )
     response = client.chat.completions.create(
@@ -140,12 +147,9 @@ def main():
     for task in TASKS:
         task_scores = []
         for ep in range(1, EPISODES_PER_TASK + 1):
-            try:
-                res = run_episode(task, ep)
-                results.append(res)
-                task_scores.append(res["score"])
-            except Exception as e:
-                print(f"[STEP] error | task={task} ep={ep} | {e}")
+            res = run_episode(task, ep)
+            results.append(res)
+            task_scores.append(res["score"])
 
         avg = round(sum(task_scores) / max(len(task_scores), 1), 3)
         print(f"[STEP] task_summary | task={task} | avg_score={avg}")
