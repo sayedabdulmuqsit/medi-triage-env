@@ -8,7 +8,8 @@ import json
 import time
 import requests
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://sayedabdulmuqsit11-medi-triage-env.hf.space")
+ENV_BASE_URL = "https://sayedabdulmuqsit11-medi-triage-env.hf.space"
+API_BASE_URL = os.environ.get("API_BASE_URL", "")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
@@ -95,7 +96,7 @@ Provide your triage decision as JSON."""
 def run_episode(task: str, episode_num: int) -> dict:
     print(f"[START] task={task} episode={episode_num}")
 
-    r = requests.post(f"{API_BASE_URL}/reset", json={"task": task}, timeout=30)
+    r = requests.post(f"{ENV_BASE_URL}/reset", json={"task": task}, timeout=30)
     r.raise_for_status()
     obs = r.json()
     print(f"[STEP] reset | patient={obs.get('patient_id')} | task={task}")
@@ -124,7 +125,7 @@ def run_episode(task: str, episode_num: int) -> dict:
         "estimated_wait_minutes": decision.get("estimated_wait_minutes", 60),
         "predicted_diagnosis": decision.get("predicted_diagnosis"),
     }
-    r2 = requests.post(f"{API_BASE_URL}/step", json=step_payload, timeout=30)
+    r2 = requests.post(f"{ENV_BASE_URL}/step", json=step_payload, timeout=30)
     r2.raise_for_status()
     result = r2.json()
 
@@ -155,7 +156,7 @@ def main():
         print(f"[STEP] task_summary | task={task} | avg_score={avg}")
 
     try:
-        r = requests.get(f"{API_BASE_URL}/state", timeout=10)
+        r = requests.get(f"{ENV_BASE_URL}/state", timeout=10)
         if r.ok:
             state = r.json()
             print(f"[STEP] final_state | {json.dumps(state)}")
