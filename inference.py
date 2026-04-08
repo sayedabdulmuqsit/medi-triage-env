@@ -1,145 +1,112 @@
-"""
-MediGuide RL Inference Agent
-Runs against the live API and logs in [START][STEP][END] format.
-"""
-
 import os
 import json
 import time
 import requests
 
 ENV_BASE_URL = "https://sayedabdulmuqsit11-medi-triage-env.hf.space"
-API_BASE_URL = os.environ.get("API_BASE_URL", "")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 TASKS = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
 
-
 def call_llm(prompt: str) -> str:
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {os.environ.get('API_KEY', '')}",
-    }
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a medical triage AI. Given patient data including vitals, "
-                    "symptoms, age, and history, classify urgency:\n"
-                    "0=Self-Care (handle at home)\n"
-                    "1=Non-Urgent (see doctor within 48h)\n"
-                    "2=Urgent (see doctor today)\n"
-                    "3=Emergency (immediate ER)\n\n"
-                    "CRITICAL: Always check vitals first. "
-                    "SpO2 < 92, HR > 120, BP systolic < 90, or RR > 28 = Emergency regardless of symptoms.\n\n"
-                    "Respond ONLY with valid JSON:\n"
-                    '{"urgency_level": <0-3>, "reasoning": "<text>", '
-                    '"recommended_action": "<text>", "estimated_wait_minutes": <int>, '
-                    '"predicted_diagnosis": "<optional text>"}'
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
-        "max_tokens": 300,
-        "temperature": 0.1,
-    }
-    base = os.environ.get("API_BASE_URL", "").rstrip("/")
-    if not base.endswith("/v1"):
-        base = base + "/v1"
-    r = requests.post(f"{base}/chat/completions", headers=headers, json=payload, timeout=60)
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"].strip()
+    try:
+        base = os.environ.get("API_BASE_URL", "").rstrip("/")
+        if not base.endswith("/v1"):
+            base = base + "/v1"
+        api_key = os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+        payload = {
+            "model": MODEL_NAME,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a medical triage AI. Classify urgency:\n"
+                        "0=Self-Care, 1=Non-Urgent, 2=Urgent, 3=Emergency\n"
+                        "CRITICAL: SpO2<92, HR>120, BP systolic<90, RR>28 = Emergency.\n"
+                        "Respond ONLY with valid JSON:\n"
+                        '{"urgency_level": <0-3>, "reasoning": "<text>", '
+                        '"recommended_action": "<text>", "estimated_wait_minutes": <int>, '
+                        '"predicted_diagnosis": "<text>"}'
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 300,
+            "temperature": 0.1,
+        }
+        r = requests.post(f"{base}/chat/completions", headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"[STEP] llm_error | {str(e)[:100]} | using fallback decision")
+        return '{"urgency_level": 2, "reasoning": "fallback", "recommended_action": "See doctor today", "estimated_wait_minutes": 60, "predicted_diagnosis": "unknown"}'
 
 
 def build_prompt(obs: dict) -> str:
     vitals = obs.get("vitals", {})
-    visit_history = obs.get("visit_history", [])
-    history_str = ""
-    if visit_history:
-        history_str = f"\nVisit History (last {len(visit_history)} visits):\n"
-        for v in visit_history:
-            history_str += (
-                f"  - Symptoms: {v.get('symptoms', [])}, "
-                f"Urgency assigned: {v.get('urgency_assigned')}, "
-                f"Reward: {v.get('reward', 0):.2f}\n"
-            )
-
-    return f"""Patient Data:
-- Patient ID: {obs.get('patient_id')}
-- Age: {obs.get('age')}
-- Symptoms: {', '.join(obs.get('symptoms', []))}
-- Duration: {obs.get('symptom_duration_hours')} hours
-- Chronic Conditions: {', '.join(obs.get('chronic_conditions', [])) or 'None'}
-- Past Visits (30 days): {obs.get('past_visits_30_days')}
-- Pain Scale: {obs.get('pain_scale')}/10
-- Time of Day: {obs.get('time_of_day', 'unknown')}
-- Season: {obs.get('season', 'unknown')}
-
-Vital Signs:
-- Heart Rate: {vitals.get('heart_rate')} BPM (normal: 60-100)
-- Blood Pressure: {vitals.get('systolic_bp')}/{vitals.get('diastolic_bp')} mmHg (normal: 120/80)
-- Oxygen Saturation (SpO2): {vitals.get('oxygen_saturation')}% (normal: 95-100%)
-- Temperature: {vitals.get('temperature')}C (normal: 36.1-37.2C)
-- Respiratory Rate: {vitals.get('respiratory_rate')} breaths/min (normal: 12-20){history_str}
-
-Provide your triage decision as JSON."""
+    return f"""Patient: age={obs.get('age')}, symptoms={obs.get('symptoms')}, duration={obs.get('symptom_duration_hours')}h
+Chronic: {obs.get('chronic_conditions')}, pain={obs.get('pain_scale')}/10
+Vitals: HR={vitals.get('heart_rate')}, BP={vitals.get('systolic_bp')}/{vitals.get('diastolic_bp')}, SpO2={vitals.get('oxygen_saturation')}%, Temp={vitals.get('temperature')}C, RR={vitals.get('respiratory_rate')}
+Decide triage urgency as JSON."""
 
 
 def run_episode(task: str, episode_num: int) -> dict:
     print(f"[START] task={task} episode={episode_num}")
+    try:
+        r = requests.post(f"{ENV_BASE_URL}/reset", json={"task": task}, timeout=30)
+        r.raise_for_status()
+        obs = r.json()
+    except Exception as e:
+        print(f"[STEP] reset_error | {str(e)[:100]}")
+        print(f"[END] task={task} episode={episode_num} reward=0")
+        return {"task": task, "episode": episode_num, "reward": 0, "score": 0}
 
-    r = requests.post(f"{ENV_BASE_URL}/reset", json={"task": task}, timeout=30)
-    r.raise_for_status()
-    obs = r.json()
     print(f"[STEP] reset | patient={obs.get('patient_id')} | task={task}")
 
     prompt = build_prompt(obs)
-
     start = time.time()
     llm_response = call_llm(prompt)
-    raw = llm_response.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    decision = json.loads(raw)
+
+    try:
+        raw = llm_response.strip().replace("```json", "").replace("```", "")
+        decision = json.loads(raw)
+    except Exception:
+        decision = {"urgency_level": 2, "reasoning": "parse error", "recommended_action": "See doctor", "estimated_wait_minutes": 60, "predicted_diagnosis": "unknown"}
 
     elapsed = round(time.time() - start, 2)
-    print(
-        f"[STEP] decision | urgency={decision.get('urgency_level')} | "
-        f"time={elapsed}s | reasoning={decision.get('reasoning', '')[:80]}"
-    )
+    print(f"[STEP] decision | urgency={decision.get('urgency_level')} | time={elapsed}s")
 
-    step_payload = {
-        "urgency_level": decision.get("urgency_level", 2),
-        "reasoning": decision.get("reasoning", ""),
-        "recommended_action": decision.get("recommended_action", ""),
-        "estimated_wait_minutes": decision.get("estimated_wait_minutes", 60),
-        "predicted_diagnosis": decision.get("predicted_diagnosis"),
-    }
-    r2 = requests.post(f"{ENV_BASE_URL}/step", json=step_payload, timeout=30)
-    r2.raise_for_status()
-    result = r2.json()
+    try:
+        r2 = requests.post(f"{ENV_BASE_URL}/step", json={
+            "urgency_level": decision.get("urgency_level", 2),
+            "reasoning": decision.get("reasoning", ""),
+            "recommended_action": decision.get("recommended_action", ""),
+            "estimated_wait_minutes": decision.get("estimated_wait_minutes", 60),
+            "predicted_diagnosis": decision.get("predicted_diagnosis", ""),
+        }, timeout=30)
+        r2.raise_for_status()
+        result = r2.json()
+    except Exception as e:
+        print(f"[STEP] step_error | {str(e)[:100]}")
+        print(f"[END] task={task} episode={episode_num} reward=0")
+        return {"task": task, "episode": episode_num, "reward": 0, "score": 0}
 
     reward = result.get("reward", 0)
     correct = result.get("info", {}).get("correct_urgency")
-    print(
-        f"[STEP] result | reward={reward} | correct_urgency={correct} | "
-        f"predicted={decision.get('urgency_level')}"
-    )
-
+    print(f"[STEP] result | reward={reward} | correct_urgency={correct} | predicted={decision.get('urgency_level')}")
     print(f"[END] task={task} episode={episode_num} reward={reward}")
     return {"task": task, "episode": episode_num, "reward": reward, "score": reward}
 
 
 def main():
     print("[START] MediGuide RL Inference Agent v2.0")
-    print(f"[STEP] API_BASE_URL={os.environ.get('API_BASE_URL')} | MODEL={MODEL_NAME}")
+    print(f"[STEP] ENV_BASE_URL={ENV_BASE_URL} | MODEL={MODEL_NAME}")
 
     results = []
     for task in TASKS:
@@ -148,15 +115,13 @@ def main():
             res = run_episode(task, ep)
             results.append(res)
             task_scores.append(res["score"])
-
         avg = round(sum(task_scores) / max(len(task_scores), 1), 3)
         print(f"[STEP] task_summary | task={task} | avg_score={avg}")
 
     try:
         r = requests.get(f"{ENV_BASE_URL}/state", timeout=10)
         if r.ok:
-            state = r.json()
-            print(f"[STEP] final_state | {json.dumps(state)}")
+            print(f"[STEP] final_state | {json.dumps(r.json())}")
     except Exception:
         pass
 
