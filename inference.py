@@ -20,10 +20,10 @@ EPISODES_PER_TASK = 3
 def call_llm(prompt: str) -> str:
     """Call the LLM to make a triage decision."""
     from openai import OpenAI
-    client = OpenAI(
-        base_url=os.environ.get("API_BASE_URL", "https://api.openai.com/v1"),
-        api_key=os.environ.get("API_KEY", os.environ.get("OPENAI_API_KEY", "dummy"))
-    )
+   client = OpenAI(
+    base_url=os.environ["API_BASE_URL"],
+    api_key=os.environ["API_KEY"]
+)
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
@@ -100,23 +100,13 @@ def run_episode(task: str, episode_num: int) -> dict:
 
     # LLM decision
     start = time.time()
-    try:
-        llm_response = call_llm(prompt)
-        raw = llm_response.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        decision = json.loads(raw)
-    except Exception as e:
-        print(f"[STEP] llm_error={e} | using fallback decision")
-        decision = {
-            "urgency_level": 2,
-            "reasoning": "Fallback: LLM unavailable, defaulting to Urgent for safety",
-            "recommended_action": "Refer to doctor",
-            "estimated_wait_minutes": 60,
-            "predicted_diagnosis": None,
-        }
+ llm_response = call_llm(prompt)
+    raw = llm_response.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    decision = json.loads(raw)
 
     elapsed = round(time.time() - start, 2)
     print(
