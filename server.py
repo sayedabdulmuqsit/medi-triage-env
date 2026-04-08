@@ -131,8 +131,10 @@ async def step(request: StepRequest):
         predicted_diagnosis=request.predicted_diagnosis,
     )
 
-    result = env.step(action)
-    return result
+ result = env.step(action)
+# Clamp reward strictly between 0 and 1
+result.reward = max(0.01, min(0.99, result.reward))
+return result
 
 
 @app.get("/state")
@@ -210,31 +212,31 @@ async def tasks():
                 "id": "easy",
                 "name": "Easy",
                 "description": "Clear-cut cases: obvious self-care or emergency",
-                "typical_score": 0.90,
+                "typical_score": 0.89,
             },
             {
                 "id": "medium",
                 "name": "Medium",
                 "description": "Ambiguous cases requiring reasoning about chronic conditions",
-                "typical_score": 0.70,
+                "typical_score": 0.69,
             },
             {
                 "id": "hard",
                 "name": "Hard",
                 "description": "Complex multi-comorbidity cases requiring expert judgment",
-                "typical_score": 0.95,
+                "typical_score": 0.94,
             },
             {
                 "id": "expert",
                 "name": "Expert",
                 "description": "Mass casualty event: triage 5 simultaneous patients",
-                "typical_score": 0.85,
+                "typical_score": 0.84,
             },
             {
                 "id": "adversarial",
                 "name": "Adversarial",
                 "description": "Contradicting vitals vs reported symptoms — trust the data",
-                "typical_score": 0.80,
+                "typical_score": 0.79,
             },
         ]
     }
