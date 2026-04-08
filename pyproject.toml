@@ -1,4 +1,10 @@
-[project] 
-name = "medi-triage-env" 
-version = "1.0.0" 
-description = "Healthcare Triage RL Environment" 
+[project]
+name = "medi-triage-env"
+version = "1.0.0"
+description = "Healthcare Triage RL Environment"
+dependencies = [
+    "openenv-core>=0.2.0"
+]
+
+[project.scripts]
+server = "server:app"
