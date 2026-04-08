@@ -1,0 +1,4 @@
+[project] 
+name = "medi-triage-env" 
+version = "1.0.0" 
+description = "Healthcare Triage RL Environment" 
