@@ -88,34 +88,21 @@ Provide your triage decision as JSON."""
 def run_episode(task: str, episode_num: int) -> dict:
     print(f"[START] task={task} episode={episode_num}")
 
-    # Reset
     r = requests.post(f"{API_BASE_URL}/reset", json={"task": task}, timeout=30)
     r.raise_for_status()
     obs = r.json()
     print(f"[STEP] reset | patient={obs.get('patient_id')} | task={task}")
 
-    # Build prompt
     prompt = build_prompt(obs)
 
-    # LLM decision
     start = time.time()
-    try:
-        llm_response = call_llm(prompt)
-        raw = llm_response.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        decision = json.loads(raw)
-    except Exception as e:
-        print(f"[STEP] llm_error={e} | using fallback decision")
-        decision = {
-            "urgency_level": 2,
-            "reasoning": "Fallback: LLM unavailable, defaulting to Urgent for safety",
-            "recommended_action": "Refer to doctor",
-            "estimated_wait_minutes": 60,
-            "predicted_diagnosis": None,
-        }
+    llm_response = call_llm(prompt)
+    raw = llm_response.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    decision = json.loads(raw)
 
     elapsed = round(time.time() - start, 2)
     print(
@@ -123,7 +110,6 @@ def run_episode(task: str, episode_num: int) -> dict:
         f"time={elapsed}s | reasoning={decision.get('reasoning', '')[:80]}"
     )
 
-    # Step
     step_payload = {
         "urgency_level": decision.get("urgency_level", 2),
         "reasoning": decision.get("reasoning", ""),
@@ -164,7 +150,6 @@ def main():
         avg = round(sum(task_scores) / max(len(task_scores), 1), 3)
         print(f"[STEP] task_summary | task={task} | avg_score={avg}")
 
-    # Final state
     try:
         r = requests.get(f"{API_BASE_URL}/state", timeout=10)
         if r.ok:
@@ -173,7 +158,7 @@ def main():
     except Exception:
         pass
 
-    overall = round(sum(r["score"] for r in results) / max(len(results), 1), 3)
+    overall = round(sum(x["score"] for x in results) / max(len(results), 1), 3)
     print(f"[END] all_tasks_complete | overall_avg_score={overall} | episodes={len(results)}")
 
 
