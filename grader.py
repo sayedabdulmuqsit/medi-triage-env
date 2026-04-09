@@ -1,63 +1,76 @@
 def grade(observation, action, correct_urgency, task="easy"):
-    # Inline all dependencies to survive strict AST sandboxing
-    is_action_dict = isinstance(action, dict)
-    is_obs_dict = isinstance(observation, dict)
+    """Grade a triage action. Always returns a float in (0, 1) exclusive."""
 
-    predicted = action.get("urgency_level", 0) if is_action_dict else getattr(action, "urgency_level", 0)
-    reasoning = action.get("reasoning", "") if is_action_dict else getattr(action, "reasoning", "")
-    reasoning = reasoning or ""
-    predicted_diagnosis = action.get("predicted_diagnosis", "") if is_action_dict else getattr(action, "predicted_diagnosis", "")
-
-    correct = correct_urgency
-    try:
-        diff = abs(int(correct) - int(predicted))
-    except (TypeError, ValueError):
-        diff = 3
-
-    # Inline clamp equivalent
     def safe_score(val):
-        return max(0.01, min(0.99, round(float(val), 4)))
+        """Clamp to strict (0, 1) range."""
+        try:
+            return max(0.01, min(0.99, round(float(val), 4)))
+        except (TypeError, ValueError):
+            return 0.50
 
-    if task == "easy":
-        return safe_score(0.88) if diff == 0 else safe_score(0.45) if diff == 1 else safe_score(0.05)
+    def safe_int(val, default=0):
+        """Convert to int safely, never crash."""
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return default
 
-    elif task == "medium":
-        # 3 = EMERGENCY, 2 = URGENT
-        if int(correct) == 3 and int(predicted) < 2:
-            return safe_score(0.05)
-        base = 0.75 if diff == 0 else 0.40 if diff == 1 else 0.05
-        symptoms = observation.get("symptoms", []) if is_obs_dict else getattr(observation, "symptoms", [])
-        symptoms = symptoms or []
-        bonus = min(0.10, sum(0.03 for s in symptoms if isinstance(s, str) and s.lower() in reasoning.lower()))
-        return safe_score(base + bonus)
+    try:
+        is_action_dict = isinstance(action, dict)
+        is_obs_dict = isinstance(observation, dict)
 
-    elif task == "hard":
-        return safe_score(0.92) if diff == 0 else safe_score(0.40) if diff == 1 else safe_score(0.05)
+        predicted = safe_int(
+            action.get("urgency_level", 0) if is_action_dict else getattr(action, "urgency_level", 0)
+        )
+        reasoning = action.get("reasoning", "") if is_action_dict else getattr(action, "reasoning", "")
+        reasoning = reasoning if isinstance(reasoning, str) else ""
+        predicted_diagnosis = action.get("predicted_diagnosis", "") if is_action_dict else getattr(action, "predicted_diagnosis", "")
 
-    elif task == "expert":
-        if diff == 0:
-            s_val = 0.85
-            if predicted_diagnosis:
-                s_val += 0.05
-            if len(reasoning) > 50:
-                s_val += 0.04
-            return safe_score(s_val)
-        return safe_score(0.45) if diff == 1 else safe_score(0.05)
+        correct = safe_int(correct_urgency, 0)
+        diff = abs(correct - predicted)
 
-    elif task == "adversarial":
-        vitals = observation.get("vitals", {}) if is_obs_dict else getattr(observation, "vitals", None)
-        v_is_dict = isinstance(vitals, dict)
-        if vitals:
-            o2 = vitals.get("oxygen_saturation", 100) if v_is_dict else getattr(vitals, "oxygen_saturation", 100)
-            hr = vitals.get("heart_rate", 80) if v_is_dict else getattr(vitals, "heart_rate", 80)
-            sbp = vitals.get("systolic_bp", 120) if v_is_dict else getattr(vitals, "systolic_bp", 120)
-            rr = vitals.get("respiratory_rate", 16) if v_is_dict else getattr(vitals, "respiratory_rate", 16)
-            critical = (o2 < 92 or hr > 120 or sbp < 90 or rr > 28)
-        else:
+        if task == "easy":
+            return safe_score(0.88) if diff == 0 else safe_score(0.45) if diff == 1 else safe_score(0.05)
+
+        elif task == "medium":
+            if correct == 3 and predicted < 2:
+                return safe_score(0.05)
+            base = 0.75 if diff == 0 else 0.40 if diff == 1 else 0.05
+            symptoms = observation.get("symptoms", []) if is_obs_dict else getattr(observation, "symptoms", [])
+            symptoms = symptoms if isinstance(symptoms, list) else []
+            bonus = min(0.10, sum(0.03 for s in symptoms if isinstance(s, str) and s.lower() in reasoning.lower()))
+            return safe_score(base + bonus)
+
+        elif task == "hard":
+            return safe_score(0.92) if diff == 0 else safe_score(0.40) if diff == 1 else safe_score(0.05)
+
+        elif task == "expert":
+            if diff == 0:
+                s_val = 0.85
+                if predicted_diagnosis:
+                    s_val += 0.05
+                if len(reasoning) > 50:
+                    s_val += 0.04
+                return safe_score(s_val)
+            return safe_score(0.45) if diff == 1 else safe_score(0.05)
+
+        elif task == "adversarial":
+            vitals = observation.get("vitals", {}) if is_obs_dict else getattr(observation, "vitals", None)
+            v_is_dict = isinstance(vitals, dict)
             critical = False
-            
-        if critical and int(predicted) == 3:
-            return safe_score(0.95)
-        return safe_score(0.70) if diff == 0 else safe_score(0.05)
+            if vitals:
+                o2 = safe_int(vitals.get("oxygen_saturation", 100) if v_is_dict else getattr(vitals, "oxygen_saturation", 100), 100)
+                hr = safe_int(vitals.get("heart_rate", 80) if v_is_dict else getattr(vitals, "heart_rate", 80), 80)
+                sbp = safe_int(vitals.get("systolic_bp", 120) if v_is_dict else getattr(vitals, "systolic_bp", 120), 120)
+                rr = safe_int(vitals.get("respiratory_rate", 16) if v_is_dict else getattr(vitals, "respiratory_rate", 16), 16)
+                critical = (o2 < 92 or hr > 120 or sbp < 90 or rr > 28)
 
-    return safe_score(0.50)
+            if critical and predicted == 3:
+                return safe_score(0.95)
+            return safe_score(0.70) if diff == 0 else safe_score(0.05)
+
+        return safe_score(0.50)
+
+    except Exception:
+        # Ultimate safety net: NEVER crash, NEVER return 0.0 or 1.0
+        return 0.50
