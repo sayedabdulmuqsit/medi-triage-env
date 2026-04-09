@@ -15,15 +15,12 @@ TASKS = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
 
-def call_llm(prompt: str) -> str:
+def call_llm(prompt):
     base = os.environ.get("API_BASE_URL", "").rstrip("/")
     if not base.endswith("/v1"):
         base = base + "/v1"
     api_key = os.environ.get("API_KEY", os.environ.get("HF_TOKEN", "dummy"))
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}",
-    }
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     payload = {
         "model": MODEL_NAME,
         "messages": [
@@ -49,7 +46,7 @@ def call_llm(prompt: str) -> str:
     return r.json()["choices"][0]["message"]["content"].strip()
 
 
-def build_prompt(obs: dict) -> str:
+def build_prompt(obs):
     vitals = obs.get("vitals", {})
     return (
         f"Patient: age={obs.get('age')}, symptoms={obs.get('symptoms')}, "
@@ -62,9 +59,8 @@ def build_prompt(obs: dict) -> str:
     )
 
 
-def run_episode(task: str, episode_num: int) -> dict:
+def run_episode(task, episode_num):
     print(f"[START] task={task} episode={episode_num}")
-
     try:
         r = requests.post(f"{ENV_BASE_URL}/reset", json={"task": task}, timeout=30)
         r.raise_for_status()
@@ -72,10 +68,9 @@ def run_episode(task: str, episode_num: int) -> dict:
     except Exception as e:
         print(f"[STEP] reset_error | {str(e)[:100]}")
         print(f"[END] task={task} episode={episode_num} reward=0")
-        return {"task": task, "episode": episode_num, "reward": 0, "score": 0}
+        return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
     print(f"[STEP] reset | patient={obs.get('patient_id')} | task={task}")
-
     prompt = build_prompt(obs)
     start = time.time()
 
@@ -85,13 +80,7 @@ def run_episode(task: str, episode_num: int) -> dict:
         decision = json.loads(raw)
     except Exception as e:
         print(f"[STEP] llm_error | {str(e)[:100]}")
-        decision = {
-            "urgency_level": 2,
-            "reasoning": "fallback",
-            "recommended_action": "See doctor today",
-            "estimated_wait_minutes": 60,
-            "predicted_diagnosis": "unknown",
-        }
+        decision = {"urgency_level": 2, "reasoning": "fallback", "recommended_action": "See doctor", "estimated_wait_minutes": 60, "predicted_diagnosis": "unknown"}
 
     elapsed = round(time.time() - start, 2)
     print(f"[STEP] decision | urgency={decision.get('urgency_level')} | time={elapsed}s")
@@ -109,20 +98,19 @@ def run_episode(task: str, episode_num: int) -> dict:
     except Exception as e:
         print(f"[STEP] step_error | {str(e)[:100]}")
         print(f"[END] task={task} episode={episode_num} reward=0")
-        return {"task": task, "episode": episode_num, "reward": 0, "score": 0}
+        return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
     reward = result.get("reward", 0)
     correct = result.get("info", {}).get("correct_urgency")
+    score = max(0.01, min(0.99, float(reward)))
     print(f"[STEP] result | reward={reward} | correct_urgency={correct} | predicted={decision.get('urgency_level')}")
     print(f"[END] task={task} episode={episode_num} reward={reward}")
-    score = max(0.01, min(0.99, float(reward)))
-return {"task": task, "episode": episode_num, "reward": reward, "score": score}
+    return {"task": task, "episode": episode_num, "reward": reward, "score": score}
 
 
 def main():
     print("[START] MediGuide RL Inference Agent v2.0")
     print(f"[STEP] ENV_BASE_URL={ENV_BASE_URL} | MODEL={MODEL_NAME}")
-
     results = []
     for task in TASKS:
         task_scores = []
@@ -132,14 +120,12 @@ def main():
             task_scores.append(res["score"])
         avg = round(sum(task_scores) / max(len(task_scores), 1), 3)
         print(f"[STEP] task_summary | task={task} | avg_score={avg}")
-
     try:
         r = requests.get(f"{ENV_BASE_URL}/state", timeout=10)
         if r.ok:
             print(f"[STEP] final_state | {json.dumps(r.json())}")
     except Exception:
         pass
-
     overall = round(sum(x["score"] for x in results) / max(len(results), 1), 3)
     print(f"[END] all_tasks_complete | overall_avg_score={overall} | episodes={len(results)}")
 
