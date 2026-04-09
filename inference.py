@@ -67,7 +67,7 @@ def run_episode(task, episode_num):
         obs = r.json()
     except Exception as e:
         print(f"[STEP] reset_error | {str(e)[:100]}")
-        print(f"[END] task={task} episode={episode_num} reward=0")
+        print(f"[END] task={task} episode={episode_num} reward=0.01")
         return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
     print(f"[STEP] reset | patient={obs.get('patient_id')} | task={task}")
@@ -97,7 +97,7 @@ def run_episode(task, episode_num):
         result = r2.json()
     except Exception as e:
         print(f"[STEP] step_error | {str(e)[:100]}")
-        print(f"[END] task={task} episode={episode_num} reward=0")
+        print(f"[END] task={task} episode={episode_num} reward=0.01")
         return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
     reward = result.get("reward", 0)
