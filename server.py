@@ -115,9 +115,15 @@ async def step(request: StepRequest):
         predicted_diagnosis=request.predicted_diagnosis,
     )
 
-    result = env.step(action)
-    result.reward = max(0.01, min(0.99, result.reward))
-    return result
+ result = env.step(action)
+clamped_reward = max(0.01, min(0.99, result.reward))
+return StepResult(
+    observation=result.observation,
+    reward=clamped_reward,
+    done=result.done,
+    info=result.info,
+    next_patient=result.next_patient,
+)
 
 
 @app.get("/state")
