@@ -100,7 +100,7 @@ def run_episode(task, episode_num):
         print(f"[END] task={task} episode={episode_num} reward=0.01")
         return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
-    reward = result.get("reward", 0)
+    reward = result.get("reward", 0.01)
     correct = result.get("info", {}).get("correct_urgency")
     score = max(0.01, min(0.99, float(reward)))
     print(f"[STEP] result | reward={reward} | correct_urgency={correct} | predicted={decision.get('urgency_level')}")
