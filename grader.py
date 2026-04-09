@@ -1,11 +1,5 @@
-from models import UrgencyLevel
-
-
-def _clamp(score):
-    return max(0.01, min(0.99, round(float(score), 4)))
-
-
 def grade(observation, action, correct_urgency, task="easy"):
+    # Inline all dependencies to survive strict AST sandboxing
     is_action_dict = isinstance(action, dict)
     is_obs_dict = isinstance(observation, dict)
 
@@ -20,30 +14,35 @@ def grade(observation, action, correct_urgency, task="easy"):
     except (TypeError, ValueError):
         diff = 3
 
+    # Inline clamp equivalent
+    def safe_score(val):
+        return max(0.01, min(0.99, round(float(val), 4)))
+
     if task == "easy":
-        return _clamp(0.88) if diff == 0 else _clamp(0.45) if diff == 1 else _clamp(0.05)
+        return safe_score(0.88) if diff == 0 else safe_score(0.45) if diff == 1 else safe_score(0.05)
 
     elif task == "medium":
-        if correct == UrgencyLevel.EMERGENCY and predicted < UrgencyLevel.URGENT:
-            return _clamp(0.05)
-        base = 0.75 if diff == 0 else _clamp(0.40) if diff == 1 else _clamp(0.05)
+        # 3 = EMERGENCY, 2 = URGENT
+        if int(correct) == 3 and int(predicted) < 2:
+            return safe_score(0.05)
+        base = 0.75 if diff == 0 else 0.40 if diff == 1 else 0.05
         symptoms = observation.get("symptoms", []) if is_obs_dict else getattr(observation, "symptoms", [])
         symptoms = symptoms or []
         bonus = min(0.10, sum(0.03 for s in symptoms if isinstance(s, str) and s.lower() in reasoning.lower()))
-        return _clamp(base + bonus)
+        return safe_score(base + bonus)
 
     elif task == "hard":
-        return _clamp(0.92) if diff == 0 else _clamp(0.40) if diff == 1 else _clamp(0.05)
+        return safe_score(0.92) if diff == 0 else safe_score(0.40) if diff == 1 else safe_score(0.05)
 
     elif task == "expert":
         if diff == 0:
-            s = 0.85
+            s_val = 0.85
             if predicted_diagnosis:
-                s += 0.05
+                s_val += 0.05
             if len(reasoning) > 50:
-                s += 0.04
-            return _clamp(s)
-        return _clamp(0.45) if diff == 1 else _clamp(0.05)
+                s_val += 0.04
+            return safe_score(s_val)
+        return safe_score(0.45) if diff == 1 else safe_score(0.05)
 
     elif task == "adversarial":
         vitals = observation.get("vitals", {}) if is_obs_dict else getattr(observation, "vitals", None)
@@ -57,8 +56,8 @@ def grade(observation, action, correct_urgency, task="easy"):
         else:
             critical = False
             
-        if critical and predicted == UrgencyLevel.EMERGENCY:
-            return _clamp(0.95)
-        return _clamp(0.70) if diff == 0 else _clamp(0.05)
+        if critical and int(predicted) == 3:
+            return safe_score(0.95)
+        return safe_score(0.70) if diff == 0 else safe_score(0.05)
 
-    return _clamp(0.50)
+    return safe_score(0.50)
