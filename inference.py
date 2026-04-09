@@ -115,7 +115,8 @@ def run_episode(task: str, episode_num: int) -> dict:
     correct = result.get("info", {}).get("correct_urgency")
     print(f"[STEP] result | reward={reward} | correct_urgency={correct} | predicted={decision.get('urgency_level')}")
     print(f"[END] task={task} episode={episode_num} reward={reward}")
-    return {"task": task, "episode": episode_num, "reward": reward, "score": reward}
+    score = max(0.01, min(0.99, float(reward)))
+return {"task": task, "episode": episode_num, "reward": reward, "score": score}
 
 
 def main():
