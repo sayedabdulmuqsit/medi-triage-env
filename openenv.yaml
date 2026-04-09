@@ -153,7 +153,7 @@ action_space:
 
 reward_signals:
   - name: accuracy
-    description: Correct triage classification (+1.0 exact, +0.4 one-off, -0.3×diff otherwise)
+    description: Correct triage classification (+0.99 exact, +0.40 one-off, -0.10 otherwise)
   - name: speed_bonus
     description: +0.2 for Emergency decisions made in under 30 seconds
   - name: diagnosis_bonus
@@ -165,7 +165,7 @@ reward_signals:
   - name: missed_emergency_penalty
     description: -0.5 for failing to escalate an Emergency to Urgent or above
 
-reward_range: [-1.0, 1.6]
+reward_range: [0.01, 0.99]
 
 tasks:
   easy:
