@@ -67,7 +67,7 @@ def run_episode(task, episode_num):
         obs = r.json()
     except Exception as e:
         print(f"[STEP] reset_error | {str(e)[:100]}")
-        print(f"[END] task={task} episode={episode_num} reward=0.01")
+        print(f"[END] task={task} episode={episode_num} score=0.01 reward=0.01")
         return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
     print(f"[STEP] reset | patient={obs.get('patient_id')} | task={task}")
@@ -97,14 +97,14 @@ def run_episode(task, episode_num):
         result = r2.json()
     except Exception as e:
         print(f"[STEP] step_error | {str(e)[:100]}")
-        print(f"[END] task={task} episode={episode_num} reward=0.01")
+        print(f"[END] task={task} episode={episode_num} score=0.01 reward=0.01")
         return {"task": task, "episode": episode_num, "reward": 0.01, "score": 0.01}
 
     reward = result.get("reward", 0.01)
     correct = result.get("info", {}).get("correct_urgency")
     score = max(0.01, min(0.99, float(reward)))
     print(f"[STEP] result | reward={reward} | correct_urgency={correct} | predicted={decision.get('urgency_level')}")
-    print(f"[END] task={task} episode={episode_num} reward={score}")
+    print(f"[END] task={task} episode={episode_num} score={score} reward={score}")
     return {"task": task, "episode": episode_num, "reward": reward, "score": score}
 
 
@@ -118,16 +118,16 @@ def main():
             res = run_episode(task, ep)
             results.append(res)
             task_scores.append(res["score"])
-        avg = round(sum(task_scores) / max(len(task_scores), 1), 3)
-        print(f"[STEP] task_summary | task={task} | avg_score={avg}")
+        avg = max(0.01, min(0.99, round(sum(task_scores) / max(len(task_scores), 1), 3)))
+        print(f"[STEP] task_summary | task={task} | score={avg} | avg_score={avg}")
     try:
         r = requests.get(f"{ENV_BASE_URL}/state", timeout=10)
         if r.ok:
             print(f"[STEP] final_state | {json.dumps(r.json())}")
     except Exception:
         pass
-    overall = round(sum(x["score"] for x in results) / max(len(results), 1), 3)
-    print(f"[END] all_tasks_complete | overall_avg_score={overall} | episodes={len(results)}")
+    overall = max(0.01, min(0.99, round(sum(x["score"] for x in results) / max(len(results), 1), 3)))
+    print(f"[END] all_tasks_complete | score={overall} | overall_avg_score={overall} | episodes={len(results)}")
 
 
 if __name__ == "__main__":
