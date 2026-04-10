@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field,  validator
 from typing import Optional, List
 from enum import IntEnum
 
@@ -43,7 +43,11 @@ class TriageAction(BaseModel):
 
 class StepResult(BaseModel):
     observation: PatientObservation
-    reward: float
+    reward: float = Field(..., gt=0.0, lt=1.0)  # strictly between 0 and 1
     done: bool
     info: dict
     next_patient: Optional[PatientObservation] = None
+
+    @validator("reward")
+    def reward_open_interval(cls, v):
+        return max(0.001, min(0.999, v))
