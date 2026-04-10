@@ -91,8 +91,6 @@ def run_task(task: str) -> float:
             all_rewards.append(0.001)
             continue
 
-        step_num += 1
-        print(f"[STEP] step={step_num} action=null reward=0.001 done=false error=null")
 
         # LLM decision
         prompt = build_prompt(obs)
@@ -156,11 +154,7 @@ def main():
         all_scores.append(score)
         time.sleep(1)  # brief pause between tasks
 
-    overall = _clamp(sum(all_scores) / max(len(all_scores), 1))
-    # Final summary line (informational, not parsed by validator)
-    print(f"[STEP] step=0 action=null reward={overall:.4f} done=true error=null")
-    print(f"[END] success=true steps=0 score={overall:.4f} rewards={','.join(f'{s:.4f}' for s in all_scores)}")
-
+   
 
 if __name__ == "__main__":
     main()
