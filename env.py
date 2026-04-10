@@ -32,13 +32,24 @@ def _init_db():
 _init_db()
 
 
+def _clamp(v: float) -> float:
+    """Strictly (0, 1) — never 0.0 or 1.0. Validator rejects both endpoints."""
+    try:
+        f = float(v)
+        if f != f:   # NaN guard
+            return 0.5
+        return max(0.001, min(0.999, f))
+    except (TypeError, ValueError):
+        return 0.5
+
+
 def _vitals_for_urgency(urgency: int) -> VitalSigns:
     if urgency == UrgencyLevel.EMERGENCY:
         return VitalSigns(
             heart_rate=random.randint(120, 160),
             systolic_bp=random.choice([random.randint(70, 89), random.randint(180, 210)]),
             diastolic_bp=random.choice([random.randint(40, 59), random.randint(110, 130)]),
-            oxygen_saturation=round(random.uniform(82.0, 91.0), 1),
+            oxygen_saturation=round(random.uniform(82.0, 90.9), 1),   # cap at 90.9 (never 91.0+)
             temperature=round(random.uniform(39.5, 41.0), 1),
             respiratory_rate=random.randint(28, 40)
         )
@@ -65,7 +76,7 @@ def _vitals_for_urgency(urgency: int) -> VitalSigns:
             heart_rate=random.randint(60, 75),
             systolic_bp=random.randint(100, 120),
             diastolic_bp=random.randint(60, 80),
-            oxygen_saturation=round(random.uniform(97.0, 100.0), 1),
+            oxygen_saturation=round(random.uniform(97.0, 99.9), 1),  # cap at 99.9 (never 100.0)
             temperature=round(random.uniform(36.1, 37.2), 1),
             respiratory_rate=random.randint(12, 16)
         )
@@ -287,7 +298,7 @@ class MediGuideEnv:
             )
 
         visit_history = self._get_visit_history(base["patient_id"])
-        self.current_scenario = base
+        self.current_scenario = {**base, "time_of_day": tod, "season": season}
 
         obs = PatientObservation(
             patient_id=base["patient_id"],
@@ -314,7 +325,8 @@ class MediGuideEnv:
 
         correct = self.current_scenario["correct_urgency"]
         predicted = action.urgency_level
-        reward = self._shaped_reward(correct, predicted, decision_time, action)
+        raw_reward = self._shaped_reward(correct, predicted, decision_time, action)
+        reward = _clamp(raw_reward)  # always strictly (0, 1)
 
         self.total_reward += reward
         self.step_count += 1
@@ -344,7 +356,7 @@ class MediGuideEnv:
                 time_of_day=self.current_scenario.get("time_of_day", "morning"),
                 season=self.current_scenario.get("season", "summer"),
             ),
-            reward=round(reward, 4),
+            reward=reward,   # already clamped by _clamp()
             done=True,
             info={
                 "correct_urgency": int(correct),
@@ -373,6 +385,9 @@ class MediGuideEnv:
         }
 
     def _shaped_reward(self, correct, predicted, decision_time, action) -> float:
+        """
+        Compute raw reward. _clamp() is applied by the caller — do NOT return 0.0 or 1.0.
+        """
         diff = abs(int(correct) - int(predicted))
 
         if diff == 0:
@@ -384,21 +399,22 @@ class MediGuideEnv:
 
         if correct == UrgencyLevel.EMERGENCY and predicted == UrgencyLevel.EMERGENCY:
             if decision_time < 30:
-                reward = min(0.99, reward + 0.10)
+                reward = min(0.979, reward + 0.10)
 
         if self.current_scenario.get("chronic_conditions") and diff == 0:
-            reward = min(0.99, reward + 0.05)
+            reward = min(0.979, reward + 0.05)
 
         if action.predicted_diagnosis and diff == 0:
-            reward = min(0.99, reward + 0.10)
+            reward = min(0.979, reward + 0.10)
 
         if int(predicted) - int(correct) >= 2:
-            reward = max(0.01, reward - 0.10)
+            reward = max(0.021, reward - 0.10)
 
         if correct == UrgencyLevel.EMERGENCY and predicted < UrgencyLevel.URGENT:
-            reward = 0.01
+            reward = 0.021  # severe penalty but NOT 0.0
 
-        return max(0.01, min(0.99, reward))
+        # Final clamp happens in caller via _clamp(), but add safety floor here too
+        return max(0.021, min(0.979, reward))
 
     def _save_visit(self, patient_id: str, urgency: int, reward: float):
         try:
@@ -450,7 +466,7 @@ class MediGuideEnv:
             c.execute("SELECT COUNT(*) FROM visits WHERE session_id=?", (self.session_id,))
             total = c.fetchone()[0]
             c.execute("SELECT AVG(reward) FROM visits WHERE session_id=?", (self.session_id,))
-            avg_r = c.fetchone()[0] or 0.0
+            avg_r = c.fetchone()[0] or 0.5
             c.execute(
                 "SELECT symptoms, COUNT(*) as cnt FROM visits WHERE session_id=? "
                 "GROUP BY symptoms ORDER BY cnt DESC LIMIT 5",

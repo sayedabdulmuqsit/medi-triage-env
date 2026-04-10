@@ -8,7 +8,7 @@ from typing import Optional
 import os
 
 from models import PatientObservation, TriageAction, StepResult, UrgencyLevel
-from env import MediGuideEnv
+from env import MediGuideEnv, _clamp
 from grader import grade
 
 app = FastAPI(
@@ -68,6 +68,11 @@ class StepRequest(BaseModel):
     hindi_input: Optional[str] = None
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.get("/")
 async def root():
     if os.path.exists("index.html"):
@@ -115,12 +120,34 @@ async def step(request: StepRequest):
         predicted_diagnosis=request.predicted_diagnosis,
     )
 
+    # Step the environment (reward already clamped inside env.step via _clamp)
     result = env.step(action)
+
+    # Also run the grader for the current scenario (used by validator)
+    current_obs  = env.current_scenario
+    grader_score = grade(
+        observation=current_obs,
+        action={
+            "urgency_level":      request.urgency_level,
+            "reasoning":          reasoning,
+            "recommended_action": request.recommended_action,
+            "predicted_diagnosis": request.predicted_diagnosis or "",
+        },
+        correct_urgency=current_obs.get("correct_urgency", 0),
+        task=env.current_task,
+    )
+
+    # Use grader score as the final reward (grader already clamps to (0.001, 0.999))
+    final_reward = _clamp(grader_score)
+
     return StepResult(
         observation=result.observation,
-        reward=max(0.01, min(0.99, result.reward)),
+        reward=final_reward,
         done=result.done,
-        info=result.info,
+        info={
+            **result.info,
+            "grader_score": final_reward,
+        },
         next_patient=result.next_patient,
     )
 
