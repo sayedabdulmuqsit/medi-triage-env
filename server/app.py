@@ -1,5 +1,5 @@
 import uvicorn
-from app import app   # FIX: was "from server import app" (circular import)
+from server.app import app  
 
 
 def main():
