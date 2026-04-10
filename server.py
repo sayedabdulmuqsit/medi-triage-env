@@ -99,6 +99,10 @@ async def step(request: StepRequest):
     if env.current_scenario is None:
         raise HTTPException(status_code=400, detail="Call /reset first")
 
+    # ✅ Save BEFORE env.step() advances the state
+    saved_scenario = env.current_scenario
+    saved_task = env.current_task
+
     reasoning = request.reasoning
     if request.hindi_input:
         translated = translate_hindi_symptoms(request.hindi_input)
@@ -120,24 +124,26 @@ async def step(request: StepRequest):
         predicted_diagnosis=request.predicted_diagnosis,
     )
 
-    # Step the environment (reward already clamped inside env.step via _clamp)
     result = env.step(action)
 
-    # Also run the grader for the current scenario (used by validator)
-    current_obs  = env.current_scenario
+    correct_urgency = (
+        saved_scenario.get("correct_urgency", 0)
+        if isinstance(saved_scenario, dict)
+        else getattr(saved_scenario, "correct_urgency", 0)
+    )
+
     grader_score = grade(
-        observation=current_obs,
+        observation=saved_scenario,
         action={
-            "urgency_level":      request.urgency_level,
-            "reasoning":          reasoning,
+            "urgency_level": request.urgency_level,
+            "reasoning": reasoning,
             "recommended_action": request.recommended_action,
             "predicted_diagnosis": request.predicted_diagnosis or "",
         },
-        correct_urgency=current_obs.get("correct_urgency", 0),
-        task=env.current_task,
+        correct_urgency=correct_urgency,
+        task=saved_task,
     )
 
-    # Use grader score as the final reward (grader already clamps to (0.001, 0.999))
     final_reward = _clamp(grader_score)
 
     return StepResult(
