@@ -11,9 +11,9 @@ from openai import OpenAI
 ENV_BASE_URL = "https://sayedabdulmuqsit11-medi-triage-env.hf.space"
 MODEL_NAME   = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-HF_TOKEN     = os.environ.get("HF_TOKEN", os.environ.get("API_KEY", "dummy"))
+API_KEY      = os.environ.get("HF_TOKEN") or os.environ.get("API_KEY", "dummy")
 
-TASKS            = ["easy", "medium", "hard", "expert", "adversarial"]
+TASKS             = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
 client = None
@@ -22,8 +22,8 @@ def get_client():
     global client
     if client is None:
         client = OpenAI(
-            api_key=os.environ.get("API_KEY", "dummy"),
-            base_url=os.environ.get("API_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
+            api_key=API_KEY,
+            base_url=API_BASE_URL.rstrip("/"),
         )
     return client
 
@@ -71,17 +71,11 @@ def build_prompt(obs: dict) -> str:
 
 
 def run_task(task: str) -> float:
-    """
-    Run EPISODES_PER_TASK episodes for one task.
-    Emits exactly ONE [START] and ONE [END] block per task (required format).
-    Returns average clamped score.
-    """
-    import requests  # only for env API, not LLM
+    import requests
 
-    # ── [START] ───────────────────────────────────────────────────────────────
     print(f"[START] task={task} env=medi-triage model={MODEL_NAME}")
 
-    all_rewards: list[float] = []
+    all_rewards: list = []
     step_num = 0
 
     for ep in range(1, EPISODES_PER_TASK + 1):
@@ -96,22 +90,27 @@ def run_task(task: str) -> float:
             all_rewards.append(0.001)
             continue
 
-
-     # LLM decision
-prompt = build_prompt(obs)
-raw = call_llm(prompt).replace("```json", "").replace("```", "")
-decision = json.loads(raw)
+        # LLM decision — must go through proxy
+        try:
+            prompt = build_prompt(obs)
+            raw = call_llm(prompt).replace("```json", "").replace("```", "")
+            decision = json.loads(raw)
+        except Exception as e:
+            step_num += 1
+            print(f"[STEP] step={step_num} action=null reward=0.001 done=true error={str(e)[:80]}")
+            all_rewards.append(0.001)
+            continue
 
         # step
         try:
             r2 = requests.post(
                 f"{ENV_BASE_URL}/step",
                 json={
-                    "urgency_level":       decision.get("urgency_level", 2),
-                    "reasoning":           decision.get("reasoning", ""),
-                    "recommended_action":  decision.get("recommended_action", ""),
+                    "urgency_level":          decision.get("urgency_level", 2),
+                    "reasoning":              decision.get("reasoning", ""),
+                    "recommended_action":     decision.get("recommended_action", ""),
                     "estimated_wait_minutes": decision.get("estimated_wait_minutes", 60),
-                    "predicted_diagnosis": decision.get("predicted_diagnosis", ""),
+                    "predicted_diagnosis":    decision.get("predicted_diagnosis", ""),
                 },
                 timeout=30,
             )
@@ -129,28 +128,22 @@ decision = json.loads(raw)
 
         step_num += 1
         action_json = json.dumps({"urgency_level": decision.get("urgency_level")})
-        print(f"[STEP] step={step_num} action={action_json} reward={reward:.4f} done={str(done).lower()} error=null")
+        print(f"[STEP] step={step_num} action={action_json} reward={reward:.2f} done={str(done).lower()} error=null")
         all_rewards.append(reward)
 
-    # aggregate
-    avg_score = _clamp(sum(all_rewards) / max(len(all_rewards), 1))
-
-    # ── [END] ─────────────────────────────────────────────────────────────────
-    rewards_str = ",".join(f"{r:.4f}" for r in all_rewards)
+    avg_score   = _clamp(sum(all_rewards) / max(len(all_rewards), 1))
+    rewards_str = ",".join(f"{r:.2f}" for r in all_rewards)
     success     = avg_score > 0.5
-    print(f"[END] success={str(success).lower()} steps={step_num} score={avg_score:.4f} rewards={rewards_str}")
+    print(f"[END] success={str(success).lower()} steps={step_num} score={avg_score:.2f} rewards={rewards_str}")
 
     return avg_score
 
 
 def main():
-    all_scores = []
     for task in TASKS:
-        score = run_task(task)
-        all_scores.append(score)
-        time.sleep(1)  # brief pause between tasks
+        run_task(task)
+        time.sleep(1)
 
-   
 
 if __name__ == "__main__":
     main()
