@@ -10,26 +10,17 @@ import requests
 from openai import OpenAI
 
 ENV_BASE_URL = "https://sayedabdulmuqsit11-medi-triage-env.hf.space"
-
-# Exactly as Scaler requires — use injected env vars
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-API_KEY      = os.environ.get("API_KEY", "dummy")
-MODEL_NAME   = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-
 TASKS             = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
-
-# Initialize at module level exactly like Scaler's sample
-client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
 
 def _clamp(v: float) -> float:
     return max(0.001, min(0.999, float(v)))
 
 
-def call_llm(prompt: str) -> str:
+def call_llm(client, model_name: str, prompt: str) -> str:
     response = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=model_name,
         messages=[
             {
                 "role": "system",
@@ -64,14 +55,13 @@ def build_prompt(obs: dict) -> str:
     )
 
 
-def run_task(task: str) -> float:
-    print(f"[START] task={task} env=medi-triage model={MODEL_NAME}", flush=True)
+def run_task(client, model_name: str, task: str) -> float:
+    print(f"[START] task={task} env=medi-triage model={model_name}", flush=True)
 
     all_rewards = []
     step_num = 0
 
     for ep in range(1, EPISODES_PER_TASK + 1):
-        # Reset environment
         try:
             r = requests.post(f"{ENV_BASE_URL}/reset", json={"task": task}, timeout=30)
             r.raise_for_status()
@@ -82,12 +72,10 @@ def run_task(task: str) -> float:
             all_rewards.append(0.001)
             continue
 
-        # LLM call through Scaler's proxy — no silent fallback
         prompt = build_prompt(obs)
-        raw = call_llm(prompt).replace("```json", "").replace("```", "").strip()
+        raw = call_llm(client, model_name, prompt).replace("```json", "").replace("```", "").strip()
         decision = json.loads(raw)
 
-        # Step environment
         try:
             r2 = requests.post(
                 f"{ENV_BASE_URL}/step",
@@ -111,7 +99,6 @@ def run_task(task: str) -> float:
         reward = _clamp(result.get("reward", 0.001))
         done   = result.get("done", True)
         step_num += 1
-
         action_json = json.dumps({"urgency_level": decision.get("urgency_level")})
         print(f"[STEP] step={step_num} action={action_json} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
         all_rewards.append(reward)
@@ -120,13 +107,18 @@ def run_task(task: str) -> float:
     rewards_str = ",".join(f"{r:.2f}" for r in all_rewards)
     success     = avg_score > 0.5
     print(f"[END] success={str(success).lower()} steps={step_num} score={avg_score:.2f} rewards={rewards_str}", flush=True)
-
     return avg_score
 
 
 def main():
+    api_base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+    api_key      = os.environ.get("API_KEY", "dummy")
+    model_name   = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+
+    client = OpenAI(base_url=api_base_url, api_key=api_key)
+
     for task in TASKS:
-        run_task(task)
+        run_task(client, model_name, task)
         time.sleep(1)
 
 
