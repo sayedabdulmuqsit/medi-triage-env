@@ -17,10 +17,10 @@ TASKS            = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
 # ── OpenAI client (required by submission rules) ──────────────────────────────
-client = OpenAI(
-    api_key=HF_TOKEN,
-    base_url=API_BASE_URL.rstrip("/"),
-)
+_kwargs = {"api_key": HF_TOKEN}
+if API_BASE_URL and API_BASE_URL != "https://api.openai.com/v1":
+    _kwargs["base_url"] = API_BASE_URL.rstrip("/")
+client = OpenAI(**_kwargs)
 
 
 def _clamp(v: float) -> float:
