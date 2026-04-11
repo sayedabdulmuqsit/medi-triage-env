@@ -16,11 +16,16 @@ HF_TOKEN     = os.environ.get("HF_TOKEN", os.environ.get("API_KEY", "dummy"))
 TASKS            = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
-# ── OpenAI client (required by submission rules) ──────────────────────────────
-_kwargs = {"api_key": HF_TOKEN}
-if API_BASE_URL and API_BASE_URL != "https://api.openai.com/v1":
-    _kwargs["base_url"] = API_BASE_URL.rstrip("/")
-client = OpenAI(**_kwargs)
+client = None
+
+def get_client():
+    global client
+    if client is None:
+        _kwargs = {"api_key": HF_TOKEN}
+        if API_BASE_URL and API_BASE_URL != "https://api.openai.com/v1":
+            _kwargs["base_url"] = API_BASE_URL.rstrip("/")
+        client = OpenAI(**_kwargs)
+    return client
 
 
 def _clamp(v: float) -> float:
