@@ -21,10 +21,10 @@ client = None
 def get_client():
     global client
     if client is None:
-        _kwargs = {"api_key": HF_TOKEN}
-        if API_BASE_URL and API_BASE_URL != "https://api.openai.com/v1":
-            _kwargs["base_url"] = API_BASE_URL.rstrip("/")
-        client = OpenAI(**_kwargs)
+        client = OpenAI(
+            api_key=os.environ.get("API_KEY", "dummy"),
+            base_url=os.environ.get("API_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
+        )
     return client
 
 
@@ -34,7 +34,7 @@ def _clamp(v: float) -> float:
 
 
 def call_llm(prompt: str) -> str:
-    response = client.chat.completions.create(
+    response = get_client().chat.completions.create(
         model=MODEL_NAME,
         messages=[
             {
