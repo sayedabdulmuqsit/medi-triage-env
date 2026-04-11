@@ -7,15 +7,27 @@ import os
 import json
 import time
 import requests
-from openai import OpenAI
 
-ENV_BASE_URL = "https://sayedabdulmuqsit11-medi-triage-env.hf.space"
+ENV_BASE_URL      = "https://sayedabdulmuqsit11-medi-triage-env.hf.space"
 TASKS             = ["easy", "medium", "hard", "expert", "adversarial"]
 EPISODES_PER_TASK = 3
 
 
 def _clamp(v: float) -> float:
     return max(0.001, min(0.999, float(v)))
+
+
+def build_prompt(obs: dict) -> str:
+    vitals = obs.get("vitals", {})
+    return (
+        f"Patient: age={obs.get('age')}, symptoms={obs.get('symptoms')}, "
+        f"duration={obs.get('symptom_duration_hours')}h\n"
+        f"Chronic: {obs.get('chronic_conditions')}, pain={obs.get('pain_scale')}/10\n"
+        f"Vitals: HR={vitals.get('heart_rate')}, BP={vitals.get('systolic_bp')}/"
+        f"{vitals.get('diastolic_bp')}, SpO2={vitals.get('oxygen_saturation')}%, "
+        f"Temp={vitals.get('temperature')}C, RR={vitals.get('respiratory_rate')}\n"
+        "Respond with JSON only."
+    )
 
 
 def call_llm(client, model_name: str, prompt: str) -> str:
@@ -42,19 +54,6 @@ def call_llm(client, model_name: str, prompt: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def build_prompt(obs: dict) -> str:
-    vitals = obs.get("vitals", {})
-    return (
-        f"Patient: age={obs.get('age')}, symptoms={obs.get('symptoms')}, "
-        f"duration={obs.get('symptom_duration_hours')}h\n"
-        f"Chronic: {obs.get('chronic_conditions')}, pain={obs.get('pain_scale')}/10\n"
-        f"Vitals: HR={vitals.get('heart_rate')}, BP={vitals.get('systolic_bp')}/"
-        f"{vitals.get('diastolic_bp')}, SpO2={vitals.get('oxygen_saturation')}%, "
-        f"Temp={vitals.get('temperature')}C, RR={vitals.get('respiratory_rate')}\n"
-        "Respond with JSON only."
-    )
-
-
 def run_task(client, model_name: str, task: str) -> float:
     print(f"[START] task={task} env=medi-triage model={model_name}", flush=True)
 
@@ -62,6 +61,7 @@ def run_task(client, model_name: str, task: str) -> float:
     step_num = 0
 
     for ep in range(1, EPISODES_PER_TASK + 1):
+        # Reset
         try:
             r = requests.post(f"{ENV_BASE_URL}/reset", json={"task": task}, timeout=30)
             r.raise_for_status()
@@ -72,10 +72,18 @@ def run_task(client, model_name: str, task: str) -> float:
             all_rewards.append(0.001)
             continue
 
-        prompt = build_prompt(obs)
-        raw = call_llm(client, model_name, prompt).replace("```json", "").replace("```", "").strip()
-        decision = json.loads(raw)
+        # LLM
+        try:
+            prompt = build_prompt(obs)
+            raw = call_llm(client, model_name, prompt).replace("```json", "").replace("```", "").strip()
+            decision = json.loads(raw)
+        except Exception as e:
+            step_num += 1
+            print(f"[STEP] step={step_num} action=null reward=0.00 done=true error={str(e)[:80]}", flush=True)
+            all_rewards.append(0.001)
+            continue
 
+        # Step
         try:
             r2 = requests.post(
                 f"{ENV_BASE_URL}/step",
@@ -111,6 +119,8 @@ def run_task(client, model_name: str, task: str) -> float:
 
 
 def main():
+    from openai import OpenAI
+
     api_base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
     api_key      = os.environ.get("API_KEY", "dummy")
     model_name   = os.environ.get("MODEL_NAME", "gpt-4o-mini")
