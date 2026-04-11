@@ -76,7 +76,7 @@ def run_task(api_base_url: str, api_key: str, model_name: str, task: str) -> flo
             obs = r.json()
         except Exception as e:
             step_num += 1
-            print(f"[STEP] step={step_num} action=null reward=0.00 done=true error={str(e)[:80]}", flush=True)
+            print(f"[STEP] step={step_num} action=null reward=0.0010 done=true error={str(e)[:80]}", flush=True)
             all_rewards.append(0.001)
             continue
 
@@ -88,7 +88,7 @@ def run_task(api_base_url: str, api_key: str, model_name: str, task: str) -> flo
             decision = json.loads(raw)
         except Exception as e:
             step_num += 1
-            print(f"[STEP] step={step_num} action=null reward=0.00 done=true error={str(e)[:80]}", flush=True)
+            print(f"[STEP] step={step_num} action=null reward=0.0010 done=true error={str(e)[:80]}", flush=True)
             all_rewards.append(0.001)
             continue
 
@@ -109,7 +109,7 @@ def run_task(api_base_url: str, api_key: str, model_name: str, task: str) -> flo
             result = r2.json()
         except Exception as e:
             step_num += 1
-            print(f"[STEP] step={step_num} action={json.dumps(decision)} reward=0.00 done=true error={str(e)[:80]}", flush=True)
+            print(f"[STEP] step={step_num} action={json.dumps(decision)} reward=0.0010 done=true error={str(e)[:80]}", flush=True)
             all_rewards.append(0.001)
             continue
 
@@ -117,13 +117,13 @@ def run_task(api_base_url: str, api_key: str, model_name: str, task: str) -> flo
         done   = result.get("done", True)
         step_num += 1
         action_json = json.dumps({"urgency_level": decision.get("urgency_level")})
-        print(f"[STEP] step={step_num} action={action_json} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
+        print(f"[STEP] step={step_num} action={action_json} reward={reward:.4f} done={str(done).lower()} error=null", flush=True)
         all_rewards.append(reward)
 
     avg_score   = _clamp(sum(all_rewards) / max(len(all_rewards), 1))
-    rewards_str = ",".join(f"{r:.2f}" for r in all_rewards)
+    rewards_str = ",".join(f"{r:.4f}" for r in all_rewards)
     success     = avg_score > 0.5
-    print(f"[END] success={str(success).lower()} steps={step_num} score={avg_score:.2f} rewards={rewards_str}", flush=True)
+    print(f"[END] success={str(success).lower()} steps={step_num} score={avg_score:.4f} rewards={rewards_str}", flush=True)
     return avg_score
 
 
