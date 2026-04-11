@@ -97,19 +97,10 @@ def run_task(task: str) -> float:
             continue
 
 
-        # LLM decision
-        prompt = build_prompt(obs)
-        try:
-            raw   = call_llm(prompt).replace("```json", "").replace("```", "")
-            decision = json.loads(raw)
-        except Exception as e:
-            decision = {
-                "urgency_level": 2,
-                "reasoning": "fallback",
-                "recommended_action": "See doctor",
-                "estimated_wait_minutes": 60,
-                "predicted_diagnosis": "unknown",
-            }
+     # LLM decision
+prompt = build_prompt(obs)
+raw = call_llm(prompt).replace("```json", "").replace("```", "")
+decision = json.loads(raw)
 
         # step
         try:
