@@ -30,10 +30,16 @@ def build_prompt(obs: dict) -> str:
     )
 
 
-def call_llm(client, model_name: str, prompt: str) -> str:
-    response = client.chat.completions.create(
-        model=model_name,
-        messages=[
+def call_llm(api_base_url: str, api_key: str, model_name: str, prompt: str) -> str:
+    """Call LLM via raw HTTP — works with any openai-compatible proxy."""
+    url = api_base_url.rstrip("/") + "/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": model_name,
+        "messages": [
             {
                 "role": "system",
                 "content": (
@@ -48,13 +54,15 @@ def call_llm(client, model_name: str, prompt: str) -> str:
             },
             {"role": "user", "content": prompt},
         ],
-        max_tokens=300,
-        temperature=0.1,
-    )
-    return response.choices[0].message.content.strip()
+        "max_tokens": 300,
+        "temperature": 0.1,
+    }
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
 
 
-def run_task(client, model_name: str, task: str) -> float:
+def run_task(api_base_url: str, api_key: str, model_name: str, task: str) -> float:
     print(f"[START] task={task} env=medi-triage model={model_name}", flush=True)
 
     all_rewards = []
@@ -75,7 +83,8 @@ def run_task(client, model_name: str, task: str) -> float:
         # LLM
         try:
             prompt = build_prompt(obs)
-            raw = call_llm(client, model_name, prompt).replace("```json", "").replace("```", "").strip()
+            raw = call_llm(api_base_url, api_key, model_name, prompt)
+            raw = raw.replace("```json", "").replace("```", "").strip()
             decision = json.loads(raw)
         except Exception as e:
             step_num += 1
@@ -119,16 +128,12 @@ def run_task(client, model_name: str, task: str) -> float:
 
 
 def main():
-    from openai import OpenAI
-
     api_base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
     api_key      = os.environ.get("API_KEY", "dummy")
     model_name   = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 
-    client = OpenAI(base_url=api_base_url, api_key=api_key)
-
     for task in TASKS:
-        run_task(client, model_name, task)
+        run_task(api_base_url, api_key, model_name, task)
         time.sleep(1)
 
 
